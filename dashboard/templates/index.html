@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Figital Trading Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0e17; color: #e1e5ea; }
+        .header { background: linear-gradient(135deg, #1a1f2e, #0d1117); padding: 24px 32px; border-bottom: 1px solid #21262d; }
+        .header h1 { font-size: 24px; color: #58a6ff; }
+        .header p { color: #8b949e; margin-top: 4px; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 32px; }
+        .card { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 20px; }
+        .card .label { font-size: 12px; text-transform: uppercase; color: #8b949e; letter-spacing: 1px; }
+        .card .value { font-size: 28px; font-weight: 700; margin-top: 8px; }
+        .card .value.green { color: #3fb950; }
+        .card .value.blue { color: #58a6ff; }
+        .card .value.orange { color: #d29922; }
+        .card .value.red { color: #f85149; }
+        .section { background: #161b22; border: 1px solid #21262d; border-radius: 8px; margin-bottom: 24px; overflow: hidden; }
+        .section h2 { padding: 16px 20px; border-bottom: 1px solid #21262d; font-size: 16px; color: #c9d1d9; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 12px 20px; font-size: 12px; text-transform: uppercase; color: #8b949e; letter-spacing: 1px; border-bottom: 1px solid #21262d; }
+        td { padding: 12px 20px; border-bottom: 1px solid #21262d; font-size: 14px; }
+        tr:last-child td { border-bottom: none; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .badge.buy { background: rgba(63, 185, 80, 0.15); color: #3fb950; }
+        .badge.sell { background: rgba(248, 81, 73, 0.15); color: #f85149; }
+        .badge.swap { background: rgba(88, 166, 255, 0.15); color: #58a6ff; }
+        .empty { padding: 40px 20px; text-align: center; color: #8b949e; }
+        .refresh-btn { background: #21262d; border: 1px solid #30363d; color: #c9d1d9; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .refresh-btn:hover { background: #30363d; }
+        .header-row { display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-row">
+            <div>
+                <h1>Figital Trading Dashboard</h1>
+                <p>Claude CEO — Aggressive Strategy | Coinbase + Base Blockchain</p>
+            </div>
+            <button class="refresh-btn" onclick="loadData()">Refresh</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="cards">
+            <div class="card">
+                <div class="label">Total Trades</div>
+                <div class="value blue" id="total-trades">0</div>
+            </div>
+            <div class="card">
+                <div class="label">Token Cost (USD)</div>
+                <div class="value orange" id="token-cost">$0.00</div>
+            </div>
+            <div class="card">
+                <div class="label">Input Tokens</div>
+                <div class="value" id="input-tokens">0</div>
+            </div>
+            <div class="card">
+                <div class="label">Output Tokens</div>
+                <div class="value" id="output-tokens">0</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Trade History</h2>
+            <div id="trades-table"></div>
+        </div>
+
+        <div class="section">
+            <h2>Token Usage Log</h2>
+            <div id="usage-table"></div>
+        </div>
+
+        <div class="section">
+            <h2>Portfolio Snapshots</h2>
+            <div id="snapshots-table"></div>
+        </div>
+    </div>
+
+    <script>
+        function formatTime(iso) {
+            return new Date(iso).toLocaleString();
+        }
+
+        function badgeClass(action) {
+            const a = action.toLowerCase();
+            if (a.includes('buy')) return 'buy';
+            if (a.includes('sell')) return 'sell';
+            return 'swap';
+        }
+
+        function loadData() {
+            fetch('/api/data')
+                .then(r => r.json())
+                .then(data => {
+                    const s = data.summary;
+                    document.getElementById('total-trades').textContent = s.total_trades;
+                    document.getElementById('token-cost').textContent = '$' + s.total_token_cost_usd.toFixed(4);
+                    document.getElementById('input-tokens').textContent = s.total_input_tokens.toLocaleString();
+                    document.getElementById('output-tokens').textContent = s.total_output_tokens.toLocaleString();
+
+                    // Trades table
+                    const trades = data.trades;
+                    if (trades.length === 0) {
+                        document.getElementById('trades-table').innerHTML = '<div class="empty">No trades yet. Run the agent to start trading.</div>';
+                    } else {
+                        let html = '<table><tr><th>Time</th><th>Action</th><th>Asset</th><th>Amount</th><th>Reasoning</th></tr>';
+                        for (const t of trades.slice().reverse()) {
+                            html += `<tr>
+                                <td>${formatTime(t.timestamp)}</td>
+                                <td><span class="badge ${badgeClass(t.action)}">${t.action}</span></td>
+                                <td>${t.asset}</td>
+                                <td>$${t.amount_usd.toFixed(2)}</td>
+                                <td>${t.reasoning}</td>
+                            </tr>`;
+                        }
+                        html += '</table>';
+                        document.getElementById('trades-table').innerHTML = html;
+                    }
+
+                    // Usage table
+                    const usage = data.token_usage;
+                    if (usage.length === 0) {
+                        document.getElementById('usage-table').innerHTML = '<div class="empty">No API calls yet.</div>';
+                    } else {
+                        let html = '<table><tr><th>Time</th><th>Input Tokens</th><th>Output Tokens</th><th>Cost</th></tr>';
+                        for (const u of usage.slice().reverse()) {
+                            html += `<tr>
+                                <td>${formatTime(u.timestamp)}</td>
+                                <td>${u.input_tokens.toLocaleString()}</td>
+                                <td>${u.output_tokens.toLocaleString()}</td>
+                                <td>$${u.cost_usd.toFixed(6)}</td>
+                            </tr>`;
+                        }
+                        html += '</table>';
+                        document.getElementById('usage-table').innerHTML = html;
+                    }
+
+                    // Snapshots
+                    const snaps = data.portfolio_snapshots;
+                    if (snaps.length === 0) {
+                        document.getElementById('snapshots-table').innerHTML = '<div class="empty">No portfolio snapshots yet.</div>';
+                    } else {
+                        let html = '<table><tr><th>Time</th><th>Holdings</th></tr>';
+                        for (const snap of snaps.slice().reverse()) {
+                            const holdings = Object.entries(snap.balances)
+                                .map(([k, v]) => `${k}: $${(v.value_usd || 0).toFixed(2)}`)
+                                .join(', ');
+                            html += `<tr><td>${formatTime(snap.timestamp)}</td><td>${holdings}</td></tr>`;
+                        }
+                        html += '</table>';
+                        document.getElementById('snapshots-table').innerHTML = html;
+                    }
+                });
+        }
+
+        loadData();
+        setInterval(loadData, 30000);
+    </script>
+</body>
+</html>
