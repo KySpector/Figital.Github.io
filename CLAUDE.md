@@ -19,26 +19,35 @@ The local proxy blocks standard `git push`. Use these approaches in order:
 3. **If token expires**: Ask the user for a new GitHub PAT.
 
 ## Project Structure
-- `trading_agent/` - Claude-powered autonomous crypto trading agent
-  - `agent.py` - Main agent loop with Anthropic API + tool use, LIVE_PRICES dict, execute_tool handler
-  - `config.py` - API keys, system prompt, strategy config
+- `trading_agent/` - Autonomous rule-based crypto trading agent (zero API costs)
+  - `agent.py` - Strategy engine: fetches prices, calculates P&L, executes rules, trades via AgentKit
+  - `config.py` - Strategy config, system prompt (legacy, agent now runs autonomously)
   - `trade_logger.py` - Trade/token usage logging to trades.json
   - `run.py` - Coinbase AgentKit wallet connection script
 - `dashboard/` - Flask web dashboard for monitoring trades
   - `app.py` - Flask routes
   - `templates/index.html` - Dashboard UI
-- `trades.json` - Trade log, token usage, portfolio snapshots (gitignored, local only)
+- `deploy.sh` - One-command deploy: `./deploy.sh --paper`, `--live`, `--loop`, `--dashboard`, `--both`
+- `trades.json` - Trade log, portfolio snapshots (gitignored, local only)
 - `.env` - CDP_API_KEY_ID, CDP_API_KEY_SECRET, CDP_WALLET_SECRET, NETWORK_ID
 
 ## Tech Stack
-- Python 3, Anthropic SDK (Claude Opus 4.6), Coinbase AgentKit, Flask
+- Python 3, Coinbase AgentKit, Flask, requests (CoinGecko prices)
 - Base blockchain (Coinbase L2)
+- **No Anthropic API key required** — agent runs rule-based strategy autonomously
 
 ---
 
-## CHECKPOINT — 2026-03-29T00:22Z
+## CHECKPOINT — 2026-03-29T20:46Z
 
-### Status: TRADING ACTIVE — Initial Allocation Complete
+### Status: TRADING ACTIVE — Agent Running, Zero API Costs
+
+### Architecture Change
+- **REMOVED** Anthropic API dependency — agent no longer calls Claude API
+- **NEW** Rule-based autonomous strategy engine in `agent.py`
+- Agent fetches live prices from CoinGecko, calculates P&L, applies strategy rules, executes trades
+- Runs as a single command: `python3 -m trading_agent.agent` or `./deploy.sh`
+- Continuous mode: `./deploy.sh --loop 60` (checks every 60 minutes)
 
 ### Portfolio (as of 2026-03-29)
 | Asset | Quantity | Entry Price (USD) | Value at Entry (USD) | Allocation |
@@ -64,42 +73,44 @@ The local proxy blocks standard `git push`. Use these approaches in order:
 - BRETT -5% on day, $64M mcap, considered Base meme blue chip
 - Broad market weakness across crypto in early 2026
 
-### Trading Strategy Rules
-- **Risk tolerance**: Aggressive
-- **Blockchain**: Base and Coinbase only
-- **Take profit**: +50% on any position
-- **Stop loss**: -25% on any position
-- **Rebalance**: Weekly or on >20% single-position move
-- **Dry powder**: Maintain at least 10% in stables (currently $20 USDC)
-- **Self-funding**: Agent must cover its own token usage costs from trading profits
-
-### Next Actions (for next session)
-1. Fetch fresh prices for ETH, AERO, DEGEN, BRETT via WebSearch
-2. Calculate P&L vs entry prices above
-3. Check if any position hit +50% take-profit or -25% stop-loss
-4. If AERO post-unlock selling has stabilized, consider increasing position with dry powder
-5. Watch ETH for $2,200 breakout — if hit, consider trimming to lock profit
-6. Log updated portfolio snapshot to trades.json
-7. Track token usage costs against portfolio value
+### Trading Strategy Rules (encoded in agent.py)
+- **Take profit**: +50% on any position → sell 50% to USDC
+- **Stop loss**: -25% on any position → sell entire position to USDC
+- **Rebalance**: When any position drifts >20% from target allocation
+- **Dry powder**: Maintain at least 10% in stables
+- **Target allocation**: ETH 40%, AERO 25%, DEGEN 15%, BRETT 10%, USDC 10%
 
 ### Coinbase Wallet Status
-- CDP API Key ID and Secret: configured in .env
-- CDP Wallet Secret: generated and saved in .env
-- Wallet connection: BLOCKED — CDP_API_KEY_SECRET format error (not valid EC private key)
-- Current trading mode: Paper trading with live prices, logged to trades.json
-- To go live: need valid CDP API key secret in PEM format from Coinbase Developer Platform
+- CDP API Key ID: `212b5434-dbb2-4ed9-b41f-44ff7b143747`
+- CDP API Key Secret: EC/PEM format, configured in .env
+- CDP Wallet Secret: Base64 DER EC key, configured in .env
+- Network: Base Mainnet
+- Wallet connection: Credentials valid, blocked by sandbox egress proxy
+- **To go live**: Run on any machine with unrestricted internet access
 
-### Token Usage This Session
-- Input: 2,500 tokens | Output: 800 tokens | Cost: $0.0325
-- Cumulative cost: $0.0325 (must be covered by trading profits)
+### Deploy Instructions
+```bash
+git clone https://github.com/KySpector/Figital.Github.io.git
+cd Figital.Github.io
+git checkout claude/setup-anthropic-client-Soux7
+pip install -r requirements.txt
 
-### How to Resume Trading
+# Run once (check portfolio, execute trades if needed)
+python3 -m trading_agent.agent
+
+# Or use deploy script
+./deploy.sh --paper       # Paper trading with live prices
+./deploy.sh --live        # Live trading via Coinbase
+./deploy.sh --loop 60     # Check every 60 minutes
+./deploy.sh --dashboard   # Web dashboard at localhost:5000
+./deploy.sh --both        # Dashboard + continuous trading
+```
+
+### How to Resume Trading (for Claude Code sessions)
 ```
 1. Read this CLAUDE.md checkpoint
 2. Read trades.json for full trade history and latest portfolio snapshot
-3. WebSearch for current prices of: ETH, AERO, DEGEN, BRETT
-4. Compare to entry prices above → calculate unrealized P&L
-5. Apply strategy rules (take profit / stop loss / rebalance)
-6. Execute any trades, log to trades.json
-7. Push updated code to GitHub
+3. Run: python3 -m trading_agent.agent
+4. Or manually: WebSearch for prices → calculate P&L → apply rules
+5. Push updated code to GitHub
 ```

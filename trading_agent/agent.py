@@ -1,80 +1,54 @@
-"""Figital Trading Agent — Claude CEO with Coinbase AgentKit live execution."""
+"""Figital Trading Agent — Autonomous rule-based trader with live execution.
+
+No Anthropic API needed. Executes the trading strategy algorithmically:
+- Fetch live prices
+- Calculate P&L vs entry prices
+- Apply rules: take profit +50%, stop loss -25%, rebalance on >20% move
+- Execute trades via AgentKit (or log as paper trades)
+"""
 
 import json
 import os
 import sys
+import time
+from datetime import datetime, timezone
 
-import anthropic
 import requests
 
-from trading_agent.config import ANTHROPIC_API_KEY, SYSTEM_PROMPT
 from trading_agent.trade_logger import (
     get_all_data,
     log_portfolio_snapshot,
-    log_token_usage,
     log_trade,
 )
 
-# Cost per million tokens for Claude Opus 4.6
-INPUT_COST_PER_M = 5.00
-OUTPUT_COST_PER_M = 25.00
+# ---------------------------------------------------------------------------
+# Strategy constants
+# ---------------------------------------------------------------------------
+TAKE_PROFIT = 0.50   # +50%
+STOP_LOSS = -0.25    # -25%
+REBALANCE_THRESHOLD = 0.20  # >20% drift triggers rebalance
+MIN_STABLE_PCT = 0.10  # Keep at least 10% in stables
+PORTFOLIO_START_USD = 200.0
 
-client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+# Target allocation weights
+TARGET_ALLOC = {
+    "ETH": 0.40,
+    "AERO": 0.25,
+    "DEGEN": 0.15,
+    "BRETT": 0.10,
+    "USDC": 0.10,
+}
+
+# Entry prices from initial allocation (2026-03-29)
+ENTRY_PRICES = {
+    "ETH": 2024.00,
+    "AERO": 0.3194,
+    "DEGEN": 0.0006802,
+    "BRETT": 0.006233,
+}
 
 # ---------------------------------------------------------------------------
-# AgentKit live wallet (initialized lazily on first trade)
-# ---------------------------------------------------------------------------
-_agentkit = None
-_wallet_provider = None
-
-
-def _get_agentkit():
-    """Lazily initialize AgentKit wallet connection."""
-    global _agentkit, _wallet_provider
-    if _agentkit is not None:
-        return _agentkit
-
-    from coinbase_agentkit import (
-        AgentKit,
-        AgentKitConfig,
-        CdpEvmWalletProvider,
-        CdpEvmWalletProviderConfig,
-        cdp_api_action_provider,
-        cdp_evm_wallet_action_provider,
-        erc20_action_provider,
-        wallet_action_provider,
-    )
-
-    wallet_config = CdpEvmWalletProviderConfig(
-        api_key_id=os.environ.get("CDP_API_KEY_ID"),
-        api_key_secret=os.environ.get("CDP_API_KEY_SECRET"),
-        wallet_secret=os.environ.get("CDP_WALLET_SECRET"),
-        network_id=os.environ.get("NETWORK_ID", "base-mainnet"),
-    )
-
-    _wallet_provider = CdpEvmWalletProvider(wallet_config)
-    _agentkit = AgentKit(AgentKitConfig(
-        wallet_provider=_wallet_provider,
-        action_providers=[
-            cdp_api_action_provider(),
-            cdp_evm_wallet_action_provider(),
-            erc20_action_provider(),
-            wallet_action_provider(),
-        ],
-    ))
-    print(f"[LIVE] Wallet: {_wallet_provider.get_address()}")
-    print(f"[LIVE] Network: {_wallet_provider.get_network()}")
-    return _agentkit
-
-
-def _agentkit_available():
-    """Check whether AgentKit can be initialized."""
-    required = ["CDP_API_KEY_ID", "CDP_API_KEY_SECRET", "CDP_WALLET_SECRET"]
-    return all(os.environ.get(k) for k in required)
-
-
-# ---------------------------------------------------------------------------
-# Live price feeds via CoinGecko (free, no auth)
+# CoinGecko price feeds (free, no auth)
 # ---------------------------------------------------------------------------
 COINGECKO_IDS = {
     "ETH": "ethereum",
@@ -109,253 +83,333 @@ def fetch_live_prices():
             symbol = reverse_map.get(gecko_id)
             if symbol and "usd" in price_data:
                 LIVE_PRICES[symbol] = price_data["usd"]
-        print(f"[PRICES] Updated: {LIVE_PRICES}")
+        print(f"  [OK] Prices updated from CoinGecko")
+        return True
     except Exception as e:
-        print(f"[PRICES] CoinGecko unavailable ({e}), using fallback prices")
+        print(f"  [WARN] CoinGecko unavailable ({e}), using fallback prices")
+        return False
 
 
 # ---------------------------------------------------------------------------
-# Tool definitions for the Claude agent loop
+# AgentKit live wallet (initialized lazily)
 # ---------------------------------------------------------------------------
-TOOLS = [
-    {
-        "name": "get_balances",
-        "description": "Get all current wallet balances on Coinbase and Base.",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-        },
-    },
-    {
-        "name": "execute_trade",
-        "description": "Execute a trade on Coinbase. Swaps one asset for another.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "from_asset": {
-                    "type": "string",
-                    "description": "Asset to sell (e.g. USDC, ETH, BTC)",
-                },
-                "to_asset": {
-                    "type": "string",
-                    "description": "Asset to buy (e.g. ETH, AERO, DEGEN)",
-                },
-                "amount_usd": {
-                    "type": "number",
-                    "description": "Amount in USD to trade",
-                },
-                "reasoning": {
-                    "type": "string",
-                    "description": "Why this trade is being made",
-                },
-            },
-            "required": ["from_asset", "to_asset", "amount_usd", "reasoning"],
-        },
-    },
-    {
-        "name": "get_asset_price",
-        "description": "Get the current price of a crypto asset in USD.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "asset": {
-                    "type": "string",
-                    "description": "Asset symbol (e.g. ETH, BTC, AERO)",
-                },
-            },
-            "required": ["asset"],
-        },
-    },
-    {
-        "name": "get_trade_history",
-        "description": "Get all past trades, token usage, and portfolio snapshots.",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-        },
-    },
-    {
-        "name": "log_portfolio",
-        "description": "Log a portfolio snapshot with current balances.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "balances": {
-                    "type": "object",
-                    "description": "Current balances as {asset: {amount, value_usd}}",
-                },
-            },
-            "required": ["balances"],
-        },
-    },
-]
+_agentkit = None
+_wallet_provider = None
+
+
+def _get_agentkit():
+    global _agentkit, _wallet_provider
+    if _agentkit is not None:
+        return _agentkit
+
+    from coinbase_agentkit import (
+        AgentKit, AgentKitConfig,
+        CdpEvmWalletProvider, CdpEvmWalletProviderConfig,
+        cdp_api_action_provider, cdp_evm_wallet_action_provider,
+        erc20_action_provider, wallet_action_provider,
+    )
+
+    wallet_config = CdpEvmWalletProviderConfig(
+        api_key_id=os.environ.get("CDP_API_KEY_ID"),
+        api_key_secret=os.environ.get("CDP_API_KEY_SECRET"),
+        wallet_secret=os.environ.get("CDP_WALLET_SECRET"),
+        network_id=os.environ.get("NETWORK_ID", "base-mainnet"),
+    )
+
+    _wallet_provider = CdpEvmWalletProvider(wallet_config)
+    _agentkit = AgentKit(AgentKitConfig(
+        wallet_provider=_wallet_provider,
+        action_providers=[
+            cdp_api_action_provider(),
+            cdp_evm_wallet_action_provider(),
+            erc20_action_provider(),
+            wallet_action_provider(),
+        ],
+    ))
+    return _agentkit
+
+
+def agentkit_available():
+    required = ["CDP_API_KEY_ID", "CDP_API_KEY_SECRET", "CDP_WALLET_SECRET"]
+    return all(os.environ.get(k) for k in required)
+
+
+def execute_live_trade(from_asset, to_asset, amount_usd):
+    """Try to execute a trade via AgentKit. Returns True if successful."""
+    if not agentkit_available():
+        return False
+    try:
+        kit = _get_agentkit()
+        for action in kit.get_tools():
+            if "swap" in action.name.lower() or "trade" in action.name.lower():
+                result = action.invoke({
+                    "from_asset_id": from_asset.lower(),
+                    "to_asset_id": to_asset.lower(),
+                    "amount": str(amount_usd),
+                })
+                print(f"  [LIVE] {from_asset} -> {to_asset}: {result}")
+                return True
+    except Exception as e:
+        print(f"  [WARN] Live trade failed: {e}")
+    return False
 
 
 # ---------------------------------------------------------------------------
-# Tool execution — routes to AgentKit live or paper trading
+# Portfolio tracking
 # ---------------------------------------------------------------------------
-def execute_tool(tool_name, tool_input):
-    """Route tool calls to live AgentKit or paper trading fallback."""
+def get_current_portfolio():
+    """Get current portfolio from latest snapshot, or build from trades."""
+    data = get_all_data()
+    snapshots = data.get("portfolio_snapshots", [])
+    if snapshots:
+        return snapshots[-1]["balances"]
 
-    if tool_name == "get_balances":
-        # Try live wallet first
-        if _agentkit_available():
-            try:
-                kit = _get_agentkit()
-                for action in kit.get_tools():
-                    if "balance" in action.name.lower():
-                        result = action.invoke({})
-                        return json.dumps({
-                            "status": "live",
-                            "wallet": _wallet_provider.get_address(),
-                            "result": str(result),
-                        })
-            except Exception as e:
-                print(f"[WARN] Live balance check failed: {e}")
+    # Default initial portfolio
+    return {
+        "ETH": {"amount": 0.039526, "value_usd": 80.0},
+        "AERO": {"amount": 156.543519, "value_usd": 50.0},
+        "DEGEN": {"amount": 44104.68, "value_usd": 30.0},
+        "BRETT": {"amount": 3208.73, "value_usd": 20.0},
+        "USDC": {"amount": 20.0, "value_usd": 20.0},
+    }
 
-        # Fallback to logged snapshots
-        data = get_all_data()
-        snapshots = data.get("portfolio_snapshots", [])
-        if snapshots:
-            return json.dumps({
-                "status": "paper",
-                "balances": snapshots[-1]["balances"],
-                "as_of": snapshots[-1]["timestamp"],
+
+def calculate_pnl(portfolio):
+    """Calculate P&L for each position using live prices."""
+    results = {}
+    total_value = 0
+    for asset, holding in portfolio.items():
+        amount = holding["amount"]
+        price = LIVE_PRICES.get(asset, 0)
+        current_value = amount * price
+        entry_price = ENTRY_PRICES.get(asset)
+
+        if entry_price and entry_price > 0:
+            pnl_pct = (price - entry_price) / entry_price
+        else:
+            pnl_pct = 0.0
+
+        results[asset] = {
+            "amount": amount,
+            "price": price,
+            "value_usd": round(current_value, 2),
+            "entry_price": entry_price,
+            "pnl_pct": round(pnl_pct, 4),
+        }
+        total_value += current_value
+
+    return results, round(total_value, 2)
+
+
+# ---------------------------------------------------------------------------
+# Strategy engine
+# ---------------------------------------------------------------------------
+def check_strategy(portfolio):
+    """Apply trading rules. Returns list of actions to take."""
+    pnl_data, total_value = calculate_pnl(portfolio)
+    actions = []
+
+    print(f"\n  Portfolio value: ${total_value:.2f}")
+    print(f"  {'Asset':<8} {'Price':>12} {'Value':>10} {'P&L':>8}")
+    print(f"  {'-'*42}")
+
+    for asset, info in pnl_data.items():
+        pnl_str = f"{info['pnl_pct']:+.1%}" if info["entry_price"] else "n/a"
+        print(f"  {asset:<8} ${info['price']:>11.4f} ${info['value_usd']:>9.2f} {pnl_str:>8}")
+
+        # Skip stablecoins
+        if asset == "USDC":
+            continue
+
+        # Take profit: +50%
+        if info["pnl_pct"] >= TAKE_PROFIT:
+            sell_value = info["value_usd"] * 0.5  # Sell half
+            actions.append({
+                "type": "take_profit",
+                "from_asset": asset,
+                "to_asset": "USDC",
+                "amount_usd": round(sell_value, 2),
+                "reasoning": (
+                    f"TAKE PROFIT: {asset} is up {info['pnl_pct']:+.1%} "
+                    f"(${info['entry_price']} -> ${info['price']}). "
+                    f"Selling 50% (${sell_value:.2f}) to lock gains."
+                ),
             })
-        return json.dumps({
-            "status": "paper",
-            "balances": {"USDC": {"amount": 200.0, "value_usd": 200.0}},
-        })
 
-    elif tool_name == "execute_trade":
-        from_asset = tool_input["from_asset"]
-        to_asset = tool_input["to_asset"]
-        amount_usd = tool_input["amount_usd"]
-        reasoning = tool_input["reasoning"]
-        price = LIVE_PRICES.get(to_asset, "unknown")
+        # Stop loss: -25%
+        elif info["pnl_pct"] <= STOP_LOSS:
+            actions.append({
+                "type": "stop_loss",
+                "from_asset": asset,
+                "to_asset": "USDC",
+                "amount_usd": round(info["value_usd"], 2),
+                "reasoning": (
+                    f"STOP LOSS: {asset} is down {info['pnl_pct']:+.1%} "
+                    f"(${info['entry_price']} -> ${info['price']}). "
+                    f"Cutting position to preserve capital."
+                ),
+            })
+
+    # Check allocation drift for rebalancing
+    if total_value > 0:
+        for asset, info in pnl_data.items():
+            current_alloc = info["value_usd"] / total_value
+            target_alloc = TARGET_ALLOC.get(asset, 0)
+            drift = abs(current_alloc - target_alloc)
+            if drift > REBALANCE_THRESHOLD and asset != "USDC":
+                if current_alloc > target_alloc:
+                    trim = round((current_alloc - target_alloc) * total_value, 2)
+                    actions.append({
+                        "type": "rebalance",
+                        "from_asset": asset,
+                        "to_asset": "USDC",
+                        "amount_usd": trim,
+                        "reasoning": (
+                            f"REBALANCE: {asset} drifted to {current_alloc:.0%} "
+                            f"(target {target_alloc:.0%}). Trimming ${trim}."
+                        ),
+                    })
+
+    if not actions:
+        print("\n  [OK] No trades needed — all positions within strategy bounds.")
+
+    return actions, pnl_data, total_value
+
+
+def execute_actions(actions, portfolio):
+    """Execute trading actions and update portfolio."""
+    for action in actions:
+        from_asset = action["from_asset"]
+        to_asset = action["to_asset"]
+        amount_usd = action["amount_usd"]
+        reasoning = action["reasoning"]
+
+        print(f"\n  >>> {action['type'].upper()}: {from_asset} -> {to_asset} (${amount_usd})")
+        print(f"      {reasoning}")
+
+        # Try live execution
         mode = "paper"
+        if execute_live_trade(from_asset, to_asset, amount_usd):
+            mode = "live"
 
-        # Try live execution via AgentKit
-        if _agentkit_available():
-            try:
-                kit = _get_agentkit()
-                for action in kit.get_tools():
-                    if "swap" in action.name.lower() or "trade" in action.name.lower():
-                        result = action.invoke({
-                            "from_asset_id": from_asset.lower(),
-                            "to_asset_id": to_asset.lower(),
-                            "amount": str(amount_usd),
-                        })
-                        mode = "live"
-                        print(f"[LIVE TRADE] {from_asset} -> {to_asset}: {result}")
-                        break
-            except Exception as e:
-                print(f"[WARN] Live trade failed, logging as paper: {e}")
-
-        # Always log the trade
+        # Log the trade
+        price = LIVE_PRICES.get(to_asset, 1.0)
         log_trade(
             action=f"SWAP {from_asset} -> {to_asset}",
             asset=to_asset,
             amount_usd=amount_usd,
             price=price,
-            reasoning=reasoning,
+            reasoning=f"[{mode.upper()}] {reasoning}",
         )
 
-        qty = round(amount_usd / price, 6) if isinstance(price, (int, float)) else "pending"
+        # Update portfolio in memory
+        from_price = LIVE_PRICES.get(from_asset, 1.0)
+        to_price = LIVE_PRICES.get(to_asset, 1.0)
 
-        return json.dumps({
-            "status": "executed",
-            "mode": mode,
-            "message": (
-                f"Swapped ${amount_usd} {from_asset} -> {to_asset} "
-                f"at ${price} ({qty} {to_asset})"
-            ),
-            "logged": True,
-        })
+        if from_asset in portfolio:
+            sell_qty = amount_usd / from_price if from_price > 0 else 0
+            portfolio[from_asset]["amount"] = max(0, portfolio[from_asset]["amount"] - sell_qty)
+            portfolio[from_asset]["value_usd"] = portfolio[from_asset]["amount"] * from_price
 
-    elif tool_name == "get_asset_price":
-        asset = tool_input["asset"]
-        price = LIVE_PRICES.get(asset)
-        if price:
-            return json.dumps({"asset": asset, "price_usd": price, "status": "live"})
-        return json.dumps({"asset": asset, "status": "not_found"})
+        if to_asset in portfolio:
+            buy_qty = amount_usd / to_price if to_price > 0 else 0
+            portfolio[to_asset]["amount"] += buy_qty
+            portfolio[to_asset]["value_usd"] = portfolio[to_asset]["amount"] * to_price
+        else:
+            buy_qty = amount_usd / to_price if to_price > 0 else 0
+            portfolio[to_asset] = {"amount": buy_qty, "value_usd": amount_usd}
 
-    elif tool_name == "get_trade_history":
-        return json.dumps(get_all_data())
-
-    elif tool_name == "log_portfolio":
-        log_portfolio_snapshot(tool_input["balances"])
-        return json.dumps({"status": "logged"})
-
-    return json.dumps({"error": f"Unknown tool: {tool_name}"})
+    return portfolio
 
 
-def _calculate_cost(usage):
-    input_cost = (usage.input_tokens / 1_000_000) * INPUT_COST_PER_M
-    output_cost = (usage.output_tokens / 1_000_000) * OUTPUT_COST_PER_M
-    return input_cost + output_cost
+# ---------------------------------------------------------------------------
+# Main trading loop
+# ---------------------------------------------------------------------------
+def run_once():
+    """Run one cycle of the trading strategy."""
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    print(f"\n{'='*50}")
+    print(f"  FIGITAL TRADING — Strategy Check")
+    print(f"  {now}")
+    mode = "LIVE" if agentkit_available() else "PAPER"
+    print(f"  Mode: {mode}")
+    print(f"{'='*50}")
+
+    # 1. Fetch prices
+    print("\n[1] Fetching live prices...")
+    fetch_live_prices()
+    for asset, price in LIVE_PRICES.items():
+        if asset in TARGET_ALLOC:
+            print(f"    {asset}: ${price}")
+
+    # 2. Load portfolio
+    print("\n[2] Loading portfolio...")
+    portfolio = get_current_portfolio()
+
+    # 3. Check strategy rules
+    print("\n[3] Analyzing positions...")
+    actions, pnl_data, total_value = check_strategy(portfolio)
+
+    # 4. Execute any trades
+    if actions:
+        print(f"\n[4] Executing {len(actions)} trade(s)...")
+        portfolio = execute_actions(actions, portfolio)
+    else:
+        print("\n[4] No trades to execute.")
+
+    # 5. Save updated portfolio snapshot
+    print("\n[5] Saving portfolio snapshot...")
+    updated_portfolio = {}
+    for asset, holding in portfolio.items():
+        price = LIVE_PRICES.get(asset, 0)
+        amount = holding["amount"]
+        updated_portfolio[asset] = {
+            "amount": round(amount, 6),
+            "value_usd": round(amount * price, 2),
+        }
+    log_portfolio_snapshot(updated_portfolio)
+
+    # Summary
+    print(f"\n{'='*50}")
+    print(f"  SUMMARY")
+    overall_pnl = total_value - PORTFOLIO_START_USD
+    overall_pct = (overall_pnl / PORTFOLIO_START_USD) * 100
+    print(f"  Portfolio: ${total_value:.2f} ({overall_pnl:+.2f}, {overall_pct:+.1f}%)")
+    print(f"  Trades executed: {len(actions)}")
+    print(f"  Mode: {mode}")
+    print(f"{'='*50}\n")
+
+    return total_value, actions
 
 
-def run_agent(user_message):
-    """Run a single agent turn with tool use loop."""
-    messages = [{"role": "user", "content": user_message}]
+def run_loop(interval_minutes=60):
+    """Run the trading strategy on a loop."""
+    print(f"Starting trading loop (every {interval_minutes}m)...")
+    print(f"Press Ctrl+C to stop.\n")
 
     while True:
-        response = client.messages.create(
-            model="claude-opus-4-6",
-            max_tokens=16000,
-            system=SYSTEM_PROMPT,
-            thinking={"type": "adaptive"},
-            tools=TOOLS,
-            messages=messages,
-        )
-
-        # Track token costs
-        cost = _calculate_cost(response.usage)
-        log_token_usage(
-            response.usage.input_tokens,
-            response.usage.output_tokens,
-            cost,
-        )
-
-        if response.stop_reason == "end_turn":
-            text_parts = [
-                block.text for block in response.content if block.type == "text"
-            ]
-            return "\n".join(text_parts)
-
-        # Handle tool use
-        tool_use_blocks = [b for b in response.content if b.type == "tool_use"]
-        if not tool_use_blocks:
-            text_parts = [
-                block.text for block in response.content if block.type == "text"
-            ]
-            return "\n".join(text_parts)
-
-        messages.append({"role": "assistant", "content": response.content})
-
-        tool_results = []
-        for tool in tool_use_blocks:
-            result = execute_tool(tool.name, tool.input)
-            tool_results.append({
-                "type": "tool_result",
-                "tool_use_id": tool.id,
-                "content": result,
-            })
-
-        messages.append({"role": "user", "content": tool_results})
+        try:
+            run_once()
+            print(f"Next check in {interval_minutes} minutes...")
+            time.sleep(interval_minutes * 60)
+        except KeyboardInterrupt:
+            print("\nTrading stopped by user.")
+            break
+        except Exception as e:
+            print(f"\n[ERROR] {e}")
+            print(f"Retrying in 5 minutes...")
+            time.sleep(300)
 
 
 if __name__ == "__main__":
-    print("=== Figital Trading Agent ===")
-    print(f"Mode: {'LIVE' if _agentkit_available() else 'PAPER'}\n")
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-    # Fetch latest prices
-    fetch_live_prices()
-
-    result = run_agent(
-        "Check your current portfolio. Fetch live prices for ETH, AERO, DEGEN, "
-        "BRETT. Calculate P&L vs entry prices. Apply strategy rules — take profit "
-        "at +50%, stop loss at -25%, rebalance if needed. Execute any trades."
-    )
-    print(result)
+    if "--loop" in sys.argv:
+        interval = 60
+        for arg in sys.argv:
+            if arg.startswith("--interval="):
+                interval = int(arg.split("=")[1])
+        run_loop(interval)
+    else:
+        run_once()
