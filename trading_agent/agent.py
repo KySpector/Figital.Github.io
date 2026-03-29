@@ -1,8 +1,11 @@
-"""Figital Trading Agent — Claude CEO with Coinbase AgentKit execution."""
+"""Figital Trading Agent — Claude CEO with Coinbase AgentKit live execution."""
 
 import json
+import os
+import sys
 
 import anthropic
+import requests
 
 from trading_agent.config import ANTHROPIC_API_KEY, SYSTEM_PROMPT
 from trading_agent.trade_logger import (
@@ -18,7 +21,102 @@ OUTPUT_COST_PER_M = 25.00
 
 client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
-# Tool definitions for the trading agent
+# ---------------------------------------------------------------------------
+# AgentKit live wallet (initialized lazily on first trade)
+# ---------------------------------------------------------------------------
+_agentkit = None
+_wallet_provider = None
+
+
+def _get_agentkit():
+    """Lazily initialize AgentKit wallet connection."""
+    global _agentkit, _wallet_provider
+    if _agentkit is not None:
+        return _agentkit
+
+    from coinbase_agentkit import (
+        AgentKit,
+        AgentKitConfig,
+        CdpEvmWalletProvider,
+        CdpEvmWalletProviderConfig,
+        cdp_api_action_provider,
+        cdp_evm_wallet_action_provider,
+        erc20_action_provider,
+        wallet_action_provider,
+    )
+
+    wallet_config = CdpEvmWalletProviderConfig(
+        api_key_id=os.environ.get("CDP_API_KEY_ID"),
+        api_key_secret=os.environ.get("CDP_API_KEY_SECRET"),
+        wallet_secret=os.environ.get("CDP_WALLET_SECRET"),
+        network_id=os.environ.get("NETWORK_ID", "base-mainnet"),
+    )
+
+    _wallet_provider = CdpEvmWalletProvider(wallet_config)
+    _agentkit = AgentKit(AgentKitConfig(
+        wallet_provider=_wallet_provider,
+        action_providers=[
+            cdp_api_action_provider(),
+            cdp_evm_wallet_action_provider(),
+            erc20_action_provider(),
+            wallet_action_provider(),
+        ],
+    ))
+    print(f"[LIVE] Wallet: {_wallet_provider.get_address()}")
+    print(f"[LIVE] Network: {_wallet_provider.get_network()}")
+    return _agentkit
+
+
+def _agentkit_available():
+    """Check whether AgentKit can be initialized."""
+    required = ["CDP_API_KEY_ID", "CDP_API_KEY_SECRET", "CDP_WALLET_SECRET"]
+    return all(os.environ.get(k) for k in required)
+
+
+# ---------------------------------------------------------------------------
+# Live price feeds via CoinGecko (free, no auth)
+# ---------------------------------------------------------------------------
+COINGECKO_IDS = {
+    "ETH": "ethereum",
+    "BTC": "bitcoin",
+    "USDC": "usd-coin",
+    "AERO": "aerodrome-finance",
+    "DEGEN": "degen-base",
+    "BRETT": "brett",
+}
+
+# Fallback prices from last web search (2026-03-29)
+LIVE_PRICES = {
+    "ETH": 2024.00,
+    "USDC": 1.00,
+    "AERO": 0.3194,
+    "DEGEN": 0.0006802,
+    "BRETT": 0.006233,
+    "BTC": 87500.00,
+}
+
+
+def fetch_live_prices():
+    """Fetch live prices from CoinGecko. Updates LIVE_PRICES in place."""
+    ids = ",".join(COINGECKO_IDS.values())
+    url = f"https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies=usd"
+    try:
+        r = requests.get(url, timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        reverse_map = {v: k for k, v in COINGECKO_IDS.items()}
+        for gecko_id, price_data in data.items():
+            symbol = reverse_map.get(gecko_id)
+            if symbol and "usd" in price_data:
+                LIVE_PRICES[symbol] = price_data["usd"]
+        print(f"[PRICES] Updated: {LIVE_PRICES}")
+    except Exception as e:
+        print(f"[PRICES] CoinGecko unavailable ({e}), using fallback prices")
+
+
+# ---------------------------------------------------------------------------
+# Tool definitions for the Claude agent loop
+# ---------------------------------------------------------------------------
 TOOLS = [
     {
         "name": "get_balances",
@@ -93,32 +191,40 @@ TOOLS = [
 ]
 
 
-# Live market prices — updated via web search each session
-LIVE_PRICES = {
-    "ETH": 2024.00,
-    "USDC": 1.00,
-    "AERO": 0.3194,
-    "DEGEN": 0.0006802,
-    "BRETT": 0.006233,
-    "BTC": 87500.00,
-}
-
-
+# ---------------------------------------------------------------------------
+# Tool execution — routes to AgentKit live or paper trading
+# ---------------------------------------------------------------------------
 def execute_tool(tool_name, tool_input):
-    """Route tool calls to the appropriate handler."""
+    """Route tool calls to live AgentKit or paper trading fallback."""
+
     if tool_name == "get_balances":
+        # Try live wallet first
+        if _agentkit_available():
+            try:
+                kit = _get_agentkit()
+                for action in kit.get_tools():
+                    if "balance" in action.name.lower():
+                        result = action.invoke({})
+                        return json.dumps({
+                            "status": "live",
+                            "wallet": _wallet_provider.get_address(),
+                            "result": str(result),
+                        })
+            except Exception as e:
+                print(f"[WARN] Live balance check failed: {e}")
+
+        # Fallback to logged snapshots
         data = get_all_data()
         snapshots = data.get("portfolio_snapshots", [])
         if snapshots:
             return json.dumps({
-                "status": "ok",
+                "status": "paper",
                 "balances": snapshots[-1]["balances"],
                 "as_of": snapshots[-1]["timestamp"],
             })
         return json.dumps({
-            "status": "ok",
+            "status": "paper",
             "balances": {"USDC": {"amount": 200.0, "value_usd": 200.0}},
-            "note": "Initial portfolio — no trades executed yet.",
         })
 
     elif tool_name == "execute_trade":
@@ -127,7 +233,26 @@ def execute_tool(tool_name, tool_input):
         amount_usd = tool_input["amount_usd"]
         reasoning = tool_input["reasoning"]
         price = LIVE_PRICES.get(to_asset, "unknown")
+        mode = "paper"
 
+        # Try live execution via AgentKit
+        if _agentkit_available():
+            try:
+                kit = _get_agentkit()
+                for action in kit.get_tools():
+                    if "swap" in action.name.lower() or "trade" in action.name.lower():
+                        result = action.invoke({
+                            "from_asset_id": from_asset.lower(),
+                            "to_asset_id": to_asset.lower(),
+                            "amount": str(amount_usd),
+                        })
+                        mode = "live"
+                        print(f"[LIVE TRADE] {from_asset} -> {to_asset}: {result}")
+                        break
+            except Exception as e:
+                print(f"[WARN] Live trade failed, logging as paper: {e}")
+
+        # Always log the trade
         log_trade(
             action=f"SWAP {from_asset} -> {to_asset}",
             asset=to_asset,
@@ -140,6 +265,7 @@ def execute_tool(tool_name, tool_input):
 
         return json.dumps({
             "status": "executed",
+            "mode": mode,
             "message": (
                 f"Swapped ${amount_usd} {from_asset} -> {to_asset} "
                 f"at ${price} ({qty} {to_asset})"
@@ -221,10 +347,15 @@ def run_agent(user_message):
 
 
 if __name__ == "__main__":
-    print("=== Figital Trading Agent ===\n")
+    print("=== Figital Trading Agent ===")
+    print(f"Mode: {'LIVE' if _agentkit_available() else 'PAPER'}\n")
+
+    # Fetch latest prices
+    fetch_live_prices()
+
     result = run_agent(
-        "You have a $200 portfolio on Coinbase. Your parameters are Coinbase "
-        "and Base Blockchain only. Risk tolerance is aggressive. Execute your "
-        "initial portfolio allocation and explain your strategy."
+        "Check your current portfolio. Fetch live prices for ETH, AERO, DEGEN, "
+        "BRETT. Calculate P&L vs entry prices. Apply strategy rules — take profit "
+        "at +50%, stop loss at -25%, rebalance if needed. Execute any trades."
     )
     print(result)
