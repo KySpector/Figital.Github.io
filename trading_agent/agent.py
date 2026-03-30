@@ -59,13 +59,13 @@ COINGECKO_IDS = {
     "BRETT": "brett",
 }
 
-# Fallback prices from last web search (2026-03-30 12:45 UTC)
+# Fallback prices from last web search (2026-03-30 14:06 UTC)
 LIVE_PRICES = {
-    "ETH": 2003.85,
+    "ETH": 2069.93,
     "USDC": 1.00,
     "AERO": 0.3162,
-    "DEGEN": 0.0006677,
-    "BRETT": 0.006233,
+    "DEGEN": 0.000668,
+    "BRETT": 0.006182,
     "BTC": 87500.00,
 }
 
