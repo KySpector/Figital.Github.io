@@ -5,3 +5,5 @@ __pycache__/
 .venv/
 venv/
 trades.json
+trader.log
+.live_prices.json
