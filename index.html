@@ -20,7 +20,7 @@
                 <li><a href="#how-it-works">How It Works</a></li>
                 <li><a href="#vault">The Vault</a></li>
                 <li><a href="#token">$FIGI</a></li>
-                <li><a href="#connect" class="btn btn-nav">Connect Wallet</a></li>
+                <li><button class="btn btn-nav" id="navConnectBtn">Connect Wallet</button></li>
             </ul>
             <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle menu">
                 <span></span><span></span><span></span>
@@ -148,7 +148,7 @@
                                 <span class="meta-value">Jewelry</span>
                             </div>
                         </div>
-                        <a href="#connect" class="btn btn-primary btn-full">View Token</a>
+                        <button class="btn btn-primary btn-full buy-asset-btn">Buy Now</button>
                     </div>
                 </div>
 
@@ -174,7 +174,7 @@
                                 <span class="meta-value">1 Troy Oz</span>
                             </div>
                         </div>
-                        <a href="#connect" class="btn btn-primary btn-full">View Token</a>
+                        <button class="btn btn-primary btn-full buy-asset-btn">Buy Now</button>
                     </div>
                 </div>
 
@@ -200,7 +200,7 @@
                                 <span class="meta-value">1 Troy Oz</span>
                             </div>
                         </div>
-                        <a href="#connect" class="btn btn-primary btn-full">View Token</a>
+                        <button class="btn btn-primary btn-full buy-asset-btn">Buy Now</button>
                     </div>
                 </div>
 
@@ -226,7 +226,7 @@
                                 <span class="meta-value">1 Troy Oz</span>
                             </div>
                         </div>
-                        <a href="#connect" class="btn btn-primary btn-full">View Token</a>
+                        <button class="btn btn-primary btn-full buy-asset-btn">Buy Now</button>
                     </div>
                 </div>
 
@@ -317,8 +317,8 @@
                     <span class="contract-label">Send to Contract</span>
                     <code class="contract-address">0x72d2B2e37134BFa2a36C1014A2264722d9A70dC4</code>
                 </div>
-                <button class="btn btn-primary btn-lg" id="connectWallet">Connect Wallet</button>
-                <p class="cta-note">Connect your Web3 wallet to purchase $FIGI tokens directly.</p>
+                <button class="btn btn-primary btn-lg" id="buyFigiBtn">Buy $FIGI</button>
+                <p class="cta-note">Connect your Web3 wallet on the Base network to purchase $FIGI tokens directly.</p>
             </div>
         </div>
     </section>
@@ -350,6 +350,81 @@
         </div>
     </footer>
 
+    <!-- Wallet Connect Modal -->
+    <div class="modal-overlay" id="walletModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Connect Wallet</h3>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <p class="modal-desc">Connect your wallet to buy $FIGI and vault assets on the Base network.</p>
+            <div class="wallet-options">
+                <button class="wallet-option" data-wallet="metamask">
+                    <svg class="wallet-icon" viewBox="0 0 40 40" fill="none"><path d="M36.8 3L22.4 13.6l2.7-6.4L36.8 3z" fill="#E2761B" stroke="#E2761B" stroke-width=".3"/><path d="M3.2 3l14.3 10.7-2.6-6.5L3.2 3zM31.5 27.4l-3.8 5.9 8.2 2.3 2.3-8.1-6.7-.1zM1.9 27.5l2.3 8.1 8.2-2.3-3.8-5.9-6.7.1z" fill="#E4761B" stroke="#E4761B" stroke-width=".3"/><path d="M12 17.8l-2.3 3.4 8.1.4-.3-8.7L12 17.8zM28 17.8l-5.6-5-.2 8.8 8.1-.4L28 17.8zM12.4 33.3l4.9-2.4-4.2-3.3-.7 5.7zM22.7 30.9l4.9 2.4-.7-5.7-4.2 3.3z" fill="#E4761B" stroke="#E4761B" stroke-width=".3"/></svg>
+                    <div class="wallet-detail">
+                        <span class="wallet-name">MetaMask</span>
+                        <span class="wallet-desc">Browser extension & mobile</span>
+                    </div>
+                    <span class="wallet-arrow">&rarr;</span>
+                </button>
+                <button class="wallet-option" data-wallet="coinbase">
+                    <svg class="wallet-icon" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="8" fill="#0052FF"/><path d="M20 8a12 12 0 100 24 12 12 0 000-24zm-3 15a1 1 0 01-1-1v-4a1 1 0 011-1h6a1 1 0 011 1v4a1 1 0 01-1 1h-6z" fill="#fff"/></svg>
+                    <div class="wallet-detail">
+                        <span class="wallet-name">Coinbase Wallet</span>
+                        <span class="wallet-desc">Native Base chain support</span>
+                    </div>
+                    <span class="wallet-arrow">&rarr;</span>
+                </button>
+                <button class="wallet-option" data-wallet="walletconnect">
+                    <svg class="wallet-icon" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="8" fill="#3B99FC"/><path d="M12.3 16.2c4.3-4.2 11.1-4.2 15.4 0l.5.5a.5.5 0 010 .8l-1.8 1.7a.3.3 0 01-.4 0l-.7-.7a8 8 0 00-10.8 0l-.8.7a.3.3 0 01-.4 0l-1.8-1.7a.5.5 0 010-.8l.8-.5zm19 3.5l1.6 1.5a.5.5 0 010 .8l-7.1 7a.5.5 0 01-.8 0l-5-5a.1.1 0 00-.2 0l-5 5a.5.5 0 01-.8 0l-7.1-7a.5.5 0 010-.8l1.6-1.5a.5.5 0 01.7 0l5.1 5a.1.1 0 00.2 0l5-5a.5.5 0 01.8 0l5 5a.1.1 0 00.2 0l5.1-5a.5.5 0 01.7 0z" fill="#fff"/></svg>
+                    <div class="wallet-detail">
+                        <span class="wallet-name">WalletConnect</span>
+                        <span class="wallet-desc">Scan QR with any wallet</span>
+                    </div>
+                    <span class="wallet-arrow">&rarr;</span>
+                </button>
+                <button class="wallet-option" data-wallet="rainbow">
+                    <svg class="wallet-icon" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="8" fill="#001E59"/><path d="M8 26.7c0-8.3 6.7-15 15-15a15 15 0 013.3.4 12.2 12.2 0 00-15.5 11.8c0 1.4.2 2.7.7 4H8.1v-1.2z" fill="#FF4000"/><path d="M12 28a11.5 11.5 0 0116.6-10.3A9.3 9.3 0 0016 26.4c0 .5 0 1.1.1 1.6H12z" fill="#FF8D00"/><path d="M16.5 28A7.5 7.5 0 0127 19c.7 0 1.4.1 2 .3a6.3 6.3 0 00-8.7 5.8c0 1 .3 2 .7 2.9h-4.5z" fill="#FFCF00"/><path d="M21 28a3.8 3.8 0 017.2-1.6H32v1.6H21z" fill="#00E599"/><circle cx="28.2" cy="26.3" r="3.8" fill="#00B8FF"/></svg>
+                    <div class="wallet-detail">
+                        <span class="wallet-name">Rainbow</span>
+                        <span class="wallet-desc">Mobile & extension wallet</span>
+                    </div>
+                    <span class="wallet-arrow">&rarr;</span>
+                </button>
+            </div>
+            <div class="modal-network">
+                <svg viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="8" fill="#0052FF"/><path d="M8 3a5 5 0 100 10A5 5 0 008 3z" fill="#fff"/></svg>
+                <span>Base Network</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Purchase Modal -->
+    <div class="modal-overlay" id="purchaseModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="purchaseTitle">Buy $FIGI</h3>
+                <button class="modal-close" id="purchaseModalClose">&times;</button>
+            </div>
+            <div id="purchaseContent">
+                <div class="purchase-form">
+                    <label class="form-label">Amount (ETH)</label>
+                    <div class="input-group">
+                        <input type="number" id="purchaseAmount" class="form-input" placeholder="0.01" step="0.001" min="0.001">
+                        <span class="input-suffix">ETH</span>
+                    </div>
+                    <div class="purchase-estimate">
+                        <span>You receive (est.)</span>
+                        <span id="estimateAmount">— $FIGI</span>
+                    </div>
+                    <button class="btn btn-primary btn-full btn-lg" id="confirmPurchase">Confirm Purchase</button>
+                    <p class="purchase-note">Transaction will execute on the Base network.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

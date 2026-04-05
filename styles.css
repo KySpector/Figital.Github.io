@@ -848,4 +848,304 @@ img {
     .token-symbol {
         font-size: 1.8rem;
     }
+
+    .wallet-options {
+        gap: 8px;
+    }
+}
+
+/* ===== MODALS ===== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    max-width: 460px;
+    width: 100%;
+    animation: modalIn 0.2s ease;
+}
+
+@keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.modal-header h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    line-height: 1;
+    transition: var(--transition);
+}
+
+.modal-close:hover {
+    color: var(--color-text);
+}
+
+.modal-desc {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 24px;
+}
+
+/* Wallet Options */
+.wallet-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.wallet-option {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    cursor: pointer;
+    transition: var(--transition);
+    width: 100%;
+    text-align: left;
+    font-family: var(--font);
+}
+
+.wallet-option:hover {
+    border-color: var(--color-primary);
+    background: rgba(108, 92, 231, 0.08);
+}
+
+.wallet-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.wallet-detail {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.wallet-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.wallet-desc {
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+}
+
+.wallet-arrow {
+    color: var(--color-text-muted);
+    font-size: 1.2rem;
+    transition: var(--transition);
+}
+
+.wallet-option:hover .wallet-arrow {
+    color: var(--color-primary);
+    transform: translateX(4px);
+}
+
+.modal-network {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-border);
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+/* Connected State */
+.btn-connected {
+    background: rgba(0, 210, 160, 0.15) !important;
+    border: 1px solid var(--color-green) !important;
+    color: var(--color-green) !important;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem !important;
+    letter-spacing: 0;
+}
+
+/* ===== PURCHASE FORM ===== */
+.purchase-form {
+    padding-top: 16px;
+}
+
+.form-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-text-muted);
+    margin-bottom: 8px;
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    transition: var(--transition);
+}
+
+.input-group:focus-within {
+    border-color: var(--color-primary);
+}
+
+.form-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 14px 16px;
+    font-size: 1.2rem;
+    font-family: var(--font);
+    color: var(--color-text);
+    outline: none;
+}
+
+.form-input::placeholder {
+    color: var(--color-text-muted);
+}
+
+/* Hide number input spinners */
+.form-input::-webkit-outer-spin-button,
+.form-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.form-input[type=number] {
+    -moz-appearance: textfield;
+}
+
+.input-suffix {
+    padding: 14px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    border-left: 1px solid var(--color-border);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.purchase-estimate {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: rgba(108, 92, 231, 0.08);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+}
+
+.purchase-estimate span:first-child {
+    color: var(--color-text-muted);
+}
+
+.purchase-estimate span:last-child {
+    color: var(--color-accent);
+    font-weight: 600;
+}
+
+.purchase-note {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin-top: 12px;
+}
+
+/* ===== NOTIFICATIONS ===== */
+.notification {
+    position: fixed;
+    top: 80px;
+    right: 24px;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    max-width: 420px;
+    opacity: 0;
+    transform: translateX(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    border: 1px solid;
+}
+
+.notification.visible {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.notification-success {
+    background: rgba(0, 210, 160, 0.1);
+    border-color: rgba(0, 210, 160, 0.3);
+    color: var(--color-green);
+}
+
+.notification-error {
+    background: rgba(255, 107, 107, 0.1);
+    border-color: rgba(255, 107, 107, 0.3);
+    color: var(--color-red);
+}
+
+.notification-info {
+    background: rgba(108, 92, 231, 0.1);
+    border-color: rgba(108, 92, 231, 0.3);
+    color: var(--color-accent);
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0 4px;
+    opacity: 0.7;
+}
+
+.notification-close:hover {
+    opacity: 1;
 }
