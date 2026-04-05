@@ -7,7 +7,7 @@ const BASE_CHAIN_CONFIG = {
     chainId: BASE_CHAIN_ID,
     chainName: 'Base',
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: ['https://mainnet.base.org'],
+    rpcUrls: ['https://mainnet.base.org', 'https://base.meowrpc.com', 'https://1rpc.io/base'],
     blockExplorerUrls: ['https://basescan.org']
 };
 
@@ -125,12 +125,21 @@ async function switchToBase(provider) {
             params: [{ chainId: BASE_CHAIN_ID }]
         });
     } catch (switchError) {
-        // Chain not added yet — add it
-        if (switchError.code === 4902) {
-            await provider.request({
-                method: 'wallet_addEthereumChain',
-                params: [BASE_CHAIN_CONFIG]
-            });
+        // Chain not added yet — add it (4902 standard, -32603 some wallets)
+        if (switchError.code === 4902 || switchError.code === -32603 ||
+            switchError?.data?.originalError?.code === 4902) {
+            try {
+                await provider.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [BASE_CHAIN_CONFIG]
+                });
+            } catch (addError) {
+                showNotification('Could not add Base network. Please add it manually in your wallet.', 'error');
+                throw addError;
+            }
+        } else if (switchError.code === 4001) {
+            showNotification('You need to switch to Base network to continue.', 'error');
+            throw switchError;
         } else {
             throw switchError;
         }
