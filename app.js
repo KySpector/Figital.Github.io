@@ -148,38 +148,44 @@ async function switchToBase(provider) {
 
 // --- Detect Wallet Provider ---
 function getProvider(walletType) {
+    // Check EIP-6963 multi-provider array first (when multiple wallets installed)
+    const providers = window.ethereum?.providers || [];
+
     if (walletType === 'metamask') {
-        // MetaMask injects window.ethereum with isMetaMask
-        if (window.ethereum?.isMetaMask) return window.ethereum;
-        // If multiple providers (EIP-6963)
-        if (window.ethereum?.providers) {
-            const mm = window.ethereum.providers.find(p => p.isMetaMask);
+        if (providers.length > 0) {
+            const mm = providers.find(p => p.isMetaMask && !p.isCoinbaseWallet);
             if (mm) return mm;
         }
+        if (window.ethereum?.isMetaMask && !window.ethereum?.isCoinbaseWallet) return window.ethereum;
         return null;
     }
 
     if (walletType === 'coinbase') {
-        // Coinbase Wallet injects as coinbaseWalletExtension or isCoinbaseWallet
+        // Coinbase Wallet Extension injects in multiple ways depending on version:
+        // 1. window.coinbaseWalletExtension (dedicated namespace)
+        // 2. window.ethereum with isCoinbaseWallet flag
+        // 3. window.ethereum with isCoinbaseBrowser flag
+        // 4. Inside providers array
         if (window.coinbaseWalletExtension) return window.coinbaseWalletExtension;
-        if (window.ethereum?.isCoinbaseWallet) return window.ethereum;
-        if (window.ethereum?.providers) {
-            const cb = window.ethereum.providers.find(p => p.isCoinbaseWallet);
+        if (providers.length > 0) {
+            const cb = providers.find(p => p.isCoinbaseWallet || p.isCoinbaseBrowser);
             if (cb) return cb;
         }
+        if (window.ethereum?.isCoinbaseWallet || window.ethereum?.isCoinbaseBrowser) return window.ethereum;
+        // Last resort: if only one provider and no specific flag, it might be Coinbase
+        if (window.ethereum && !window.ethereum.isMetaMask && !window.ethereum.isRainbow) return window.ethereum;
         return null;
     }
 
     if (walletType === 'rainbow') {
-        if (window.ethereum?.isRainbow) return window.ethereum;
-        if (window.ethereum?.providers) {
-            const rb = window.ethereum.providers.find(p => p.isRainbow);
+        if (providers.length > 0) {
+            const rb = providers.find(p => p.isRainbow);
             if (rb) return rb;
         }
+        if (window.ethereum?.isRainbow) return window.ethereum;
         return null;
     }
 
-    // Fallback: use whatever ethereum provider is available
     return window.ethereum || null;
 }
 
@@ -205,21 +211,44 @@ async function connectWallet(walletType) {
     }
 
     try {
-        // Request account access
-        const accounts = await provider.request({ method: 'eth_requestAccounts' });
+        // Step 1: Request account access first
+        let accounts;
+        try {
+            accounts = await provider.request({ method: 'eth_requestAccounts' });
+        } catch (reqErr) {
+            // Coinbase Wallet sometimes needs a retry after popup closes
+            if (reqErr.code === -32002) {
+                showNotification('Request already pending — check your wallet popup.', 'info');
+                return;
+            }
+            throw reqErr;
+        }
 
-        if (accounts.length === 0) {
+        if (!accounts || accounts.length === 0) {
             showNotification('No accounts found. Please unlock your wallet.', 'error');
             return;
         }
 
-        // Switch to Base chain
-        await switchToBase(provider);
-
-        // Set up ethers
-        const ethersProvider = new ethers.providers.Web3Provider(provider);
-        const signer = ethersProvider.getSigner();
         const address = accounts[0];
+
+        // Step 2: Switch to Base chain
+        try {
+            await switchToBase(provider);
+        } catch (chainErr) {
+            // If chain switch fails, still connect but warn
+            if (chainErr.code !== 4001) {
+                showNotification('Connected, but could not switch to Base. Please switch manually in your wallet.', 'info');
+            } else {
+                throw chainErr;
+            }
+        }
+
+        // Step 3: Set up ethers AFTER chain switch completes
+        // Small delay to let Coinbase Wallet Extension settle after chain switch
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
+        const signer = ethersProvider.getSigner();
 
         walletState = {
             connected: true,
@@ -234,14 +263,22 @@ async function connectWallet(walletType) {
 
         // Listen for account/chain changes
         provider.on('accountsChanged', handleAccountsChanged);
-        provider.on('chainChanged', () => window.location.reload());
+        provider.on('chainChanged', (chainId) => {
+            // Re-init provider on chain change instead of full reload
+            const newProvider = new ethers.providers.Web3Provider(provider, 'any');
+            walletState.provider = newProvider;
+            walletState.signer = newProvider.getSigner();
+            if (chainId !== BASE_CHAIN_ID) {
+                showNotification('Please switch back to Base network.', 'info');
+            }
+        });
 
     } catch (err) {
         console.error('Wallet connection error:', err);
-        if (err.code === 4001) {
+        if (err.code === 4001 || err.code === 'ACTION_REJECTED') {
             showNotification('Connection rejected by user.', 'error');
         } else {
-            showNotification('Failed to connect wallet. Please try again.', 'error');
+            showNotification(`Connection failed: ${err.message || 'Unknown error. Please try again.'}`, 'error');
         }
     }
 }
