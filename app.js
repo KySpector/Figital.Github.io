@@ -2,6 +2,19 @@
 
 // --- Constants ---
 const FIGI_CONTRACT = '0x72d2B2e37134BFa2a36C1014A2264722d9A70dC4';
+const USDC_CONTRACT_BASE = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'; // USDC on Base
+const USDC_DECIMALS = 6;
+const FIGI_PRICE_USD = 0.01;
+
+// Minimal ERC-20 ABI for balanceOf, approve, and transfer
+const ERC20_ABI = [
+    'function balanceOf(address owner) view returns (uint256)',
+    'function allowance(address owner, address spender) view returns (uint256)',
+    'function approve(address spender, uint256 amount) returns (bool)',
+    'function transfer(address to, uint256 amount) returns (bool)',
+    'function decimals() view returns (uint8)'
+];
+
 const BASE_CHAIN_ID = '0x2105'; // 8453 in hex
 const BASE_CHAIN_CONFIG = {
     chainId: BASE_CHAIN_ID,
@@ -18,6 +31,7 @@ let walletState = {
     provider: null,
     signer: null
 };
+let selectedCurrency = 'eth';
 
 // --- DOM Elements ---
 const navbar = document.getElementById('navbar');
@@ -322,22 +336,79 @@ document.querySelectorAll('.wallet-option').forEach(option => {
     });
 });
 
-// --- Purchase Flow ---
+// --- Currency Toggle ---
+const currencyBtns = document.querySelectorAll('.currency-btn');
+const amountLabel = document.getElementById('amountLabel');
+const inputSuffix = document.getElementById('inputSuffix');
+const usdcBalanceEl = document.getElementById('usdcBalance');
+const usdcBalanceValue = document.getElementById('usdcBalanceValue');
+
+currencyBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        currencyBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedCurrency = btn.dataset.currency;
+
+        if (selectedCurrency === 'usdc') {
+            amountLabel.textContent = 'Amount (USDC)';
+            inputSuffix.textContent = 'USDC';
+            purchaseAmount.placeholder = '10.00';
+            purchaseAmount.step = '1';
+            purchaseAmount.min = '1';
+            usdcBalanceEl.style.display = 'flex';
+            fetchUSDCBalance();
+        } else {
+            amountLabel.textContent = 'Amount (ETH)';
+            inputSuffix.textContent = 'ETH';
+            purchaseAmount.placeholder = '0.01';
+            purchaseAmount.step = '0.001';
+            purchaseAmount.min = '0.001';
+            usdcBalanceEl.style.display = 'none';
+        }
+        purchaseAmount.value = '';
+        estimateAmount.textContent = '— $FIGI';
+    });
+});
+
+// Fetch USDC balance
+async function fetchUSDCBalance() {
+    if (!walletState.connected) {
+        usdcBalanceValue.textContent = 'Connect wallet first';
+        return;
+    }
+    try {
+        const usdc = new ethers.Contract(USDC_CONTRACT_BASE, ERC20_ABI, walletState.provider);
+        const balance = await usdc.balanceOf(walletState.address);
+        const formatted = ethers.utils.formatUnits(balance, USDC_DECIMALS);
+        usdcBalanceValue.textContent = `${parseFloat(formatted).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`;
+    } catch (err) {
+        console.error('USDC balance error:', err);
+        usdcBalanceValue.textContent = 'Unable to fetch';
+    }
+}
+
+// --- Purchase Estimate ---
 if (purchaseAmount) {
     purchaseAmount.addEventListener('input', () => {
-        const eth = parseFloat(purchaseAmount.value);
-        if (eth > 0) {
-            // Estimate: at $0.01/FIGI, using a rough ETH price placeholder
-            // In production, fetch live ETH/USD price from an oracle
-            const ethPriceUSD = 3500; // placeholder
-            const figiAmount = Math.floor((eth * ethPriceUSD) / 0.01);
-            estimateAmount.textContent = `~${figiAmount.toLocaleString()} $FIGI`;
+        const amount = parseFloat(purchaseAmount.value);
+        if (amount > 0) {
+            if (selectedCurrency === 'usdc') {
+                // USDC is 1:1 with USD, so direct calculation
+                const figiAmount = Math.floor(amount / FIGI_PRICE_USD);
+                estimateAmount.textContent = `~${figiAmount.toLocaleString()} $FIGI`;
+            } else {
+                // ETH: use placeholder price (in production, fetch from oracle)
+                const ethPriceUSD = 3500;
+                const figiAmount = Math.floor((amount * ethPriceUSD) / FIGI_PRICE_USD);
+                estimateAmount.textContent = `~${figiAmount.toLocaleString()} $FIGI`;
+            }
         } else {
             estimateAmount.textContent = '— $FIGI';
         }
     });
 }
 
+// --- Confirm Purchase ---
 if (confirmPurchase) {
     confirmPurchase.addEventListener('click', async () => {
         if (!walletState.connected) {
@@ -346,39 +417,84 @@ if (confirmPurchase) {
             return;
         }
 
-        const eth = parseFloat(purchaseAmount.value);
-        if (!eth || eth <= 0) {
+        const amount = parseFloat(purchaseAmount.value);
+        if (!amount || amount <= 0) {
             showNotification('Please enter a valid amount.', 'error');
             return;
         }
 
         try {
-            confirmPurchase.textContent = 'Confirming...';
             confirmPurchase.disabled = true;
 
-            const tx = await walletState.signer.sendTransaction({
-                to: FIGI_CONTRACT,
-                value: ethers.utils.parseEther(eth.toString())
-            });
-
-            showNotification('Transaction submitted! Waiting for confirmation...', 'info');
-            closeModal(purchaseModal);
-
-            await tx.wait();
-            showNotification(`Transaction confirmed! TX: ${shortenAddress(tx.hash)}`, 'success');
+            if (selectedCurrency === 'usdc') {
+                await purchaseWithUSDC(amount);
+            } else {
+                await purchaseWithETH(amount);
+            }
 
         } catch (err) {
             console.error('Transaction error:', err);
             if (err.code === 4001 || err.code === 'ACTION_REJECTED') {
                 showNotification('Transaction rejected by user.', 'error');
             } else {
-                showNotification('Transaction failed. Please try again.', 'error');
+                showNotification(`Transaction failed: ${err.reason || err.message || 'Please try again.'}`, 'error');
             }
         } finally {
             confirmPurchase.textContent = 'Confirm Purchase';
             confirmPurchase.disabled = false;
         }
     });
+}
+
+// --- Purchase with ETH ---
+async function purchaseWithETH(amount) {
+    confirmPurchase.textContent = 'Confirming...';
+
+    const tx = await walletState.signer.sendTransaction({
+        to: FIGI_CONTRACT,
+        value: ethers.utils.parseEther(amount.toString())
+    });
+
+    showNotification('Transaction submitted! Waiting for confirmation...', 'info');
+    closeModal(purchaseModal);
+
+    await tx.wait();
+    showNotification(`Transaction confirmed! TX: ${shortenAddress(tx.hash)}`, 'success');
+}
+
+// --- Purchase with USDC ---
+async function purchaseWithUSDC(amount) {
+    const usdc = new ethers.Contract(USDC_CONTRACT_BASE, ERC20_ABI, walletState.signer);
+    const amountInUnits = ethers.utils.parseUnits(amount.toString(), USDC_DECIMALS);
+
+    // Step 1: Check balance
+    const balance = await usdc.balanceOf(walletState.address);
+    if (balance.lt(amountInUnits)) {
+        const balFormatted = ethers.utils.formatUnits(balance, USDC_DECIMALS);
+        showNotification(`Insufficient USDC balance. You have ${parseFloat(balFormatted).toFixed(2)} USDC.`, 'error');
+        return;
+    }
+
+    // Step 2: Check allowance and approve if needed
+    const allowance = await usdc.allowance(walletState.address, FIGI_CONTRACT);
+    if (allowance.lt(amountInUnits)) {
+        confirmPurchase.textContent = 'Approving USDC...';
+        showNotification('Step 1/2: Approve USDC spending in your wallet...', 'info');
+
+        const approveTx = await usdc.approve(FIGI_CONTRACT, amountInUnits);
+        await approveTx.wait();
+        showNotification('USDC approved! Now confirming transfer...', 'success');
+    }
+
+    // Step 3: Transfer USDC to FIGI contract
+    confirmPurchase.textContent = 'Sending USDC...';
+    const transferTx = await usdc.transfer(FIGI_CONTRACT, amountInUnits);
+
+    showNotification('USDC transfer submitted! Waiting for confirmation...', 'info');
+    closeModal(purchaseModal);
+
+    await transferTx.wait();
+    showNotification(`USDC transfer confirmed! TX: ${shortenAddress(transferTx.hash)}`, 'success');
 }
 
 // --- Notification System ---
