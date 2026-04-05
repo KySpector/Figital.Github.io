@@ -21,6 +21,18 @@ navLinks.querySelectorAll('a').forEach(link => {
     });
 });
 
+// Copy contract address
+const copyBtn = document.getElementById('copyContract');
+if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+        const address = document.getElementById('contractAddress').textContent;
+        navigator.clipboard.writeText(address).then(() => {
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+        });
+    });
+}
+
 // Connect wallet button (placeholder)
 const connectBtn = document.getElementById('connectWallet');
 if (connectBtn) {

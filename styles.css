@@ -532,6 +532,101 @@ img {
     color: var(--color-text-muted);
 }
 
+/* Token Contract & Sale Info */
+.token-contract {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.contract-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+
+.contract-address {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    color: var(--color-accent);
+    word-break: break-all;
+    flex: 1;
+}
+
+.btn-copy {
+    background: var(--color-primary);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: var(--font);
+}
+
+.btn-copy:hover {
+    background: #5b4bd6;
+}
+
+.token-sale-info {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 24px;
+    padding: 20px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+}
+
+.sale-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sale-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-text-muted);
+}
+
+.sale-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.buy-contract-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 32px;
+    max-width: 520px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.buy-contract-box .contract-address {
+    font-size: 0.9rem;
+    text-align: center;
+}
+
 .token-features li::before {
     content: '';
     position: absolute;
