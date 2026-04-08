@@ -2,6 +2,8 @@
 
 // --- Constants ---
 const FIGI_CONTRACT = '0x72d2B2e37134BFa2a36C1014A2264722d9A70dC4';
+const FIGITAL_NFT_CONTRACT = '0x84Aedaecd801d71B8De522308307a9f4586352f9';
+const FIGITAL_MINTER_CONTRACT = '0x83A19B3c431781A5352E9EDDF811Fb45a39a2554';
 const USDC_CONTRACT_BASE = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'; // USDC on Base
 const USDC_DECIMALS = 6;
 const FIGI_PRICE_USD = 0.01;
@@ -13,6 +15,23 @@ const ERC20_ABI = [
     'function approve(address spender, uint256 amount) returns (bool)',
     'function transfer(address to, uint256 amount) returns (bool)',
     'function decimals() view returns (uint8)'
+];
+
+// ERC-721 ABI (Figital NFT)
+const ERC721_ABI = [
+    'function balanceOf(address owner) view returns (uint256)',
+    'function ownerOf(uint256 tokenId) view returns (address)',
+    'function tokenURI(uint256 tokenId) view returns (string)',
+    'function totalSupply() view returns (uint256)',
+    'function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)'
+];
+
+// Figital Minter ABI
+const MINTER_ABI = [
+    'function mint(address to, string tokenURI) returns (uint256)',
+    'function mintWithFIGI(address to, string tokenURI, uint256 figiAmount) returns (uint256)',
+    'function mintPrice() view returns (uint256)',
+    'function figiMintPrice() view returns (uint256)'
 ];
 
 const BASE_CHAIN_ID = '0x2105'; // 8453 in hex
@@ -533,6 +552,21 @@ function shortenAddress(addr) {
     if (!addr) return '';
     return addr.slice(0, 6) + '...' + addr.slice(-4);
 }
+
+// --- Load IPFS Images for Vault Assets ---
+const IPFS_GATEWAY = 'https://gateway.pinata.cloud/ipfs/';
+
+function loadIPFSImages() {
+    document.querySelectorAll('.asset-card[data-ipfs-image]').forEach(card => {
+        const cid = card.dataset.ipfsImage;
+        if (cid) {
+            const imageContainer = card.querySelector('.asset-image');
+            imageContainer.innerHTML = `<img src="${IPFS_GATEWAY}${cid}" alt="Asset" class="asset-img-ipfs">`;
+        }
+    });
+}
+
+loadIPFSImages();
 
 // --- Scroll Reveal ---
 const observerOptions = { threshold: 0.1, rootMargin: '0px 0px -50px 0px' };

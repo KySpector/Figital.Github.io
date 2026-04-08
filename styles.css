@@ -436,6 +436,12 @@ img {
     opacity: 0.3;
 }
 
+.asset-img-ipfs {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 .asset-info {
     padding: 24px;
 }

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Figital — Mint RWA NFT</title>
+    <meta name="description" content="Mint real-world asset NFTs with IPFS metadata on the Base network.">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="mint.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar scrolled" id="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">FIGITAL</a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="index.html#vault">The Vault</a></li>
+                <li><a href="pools.html">Pools</a></li>
+                <li><a href="mint.html" class="nav-active">Mint</a></li>
+                <li><a href="index.html#token">$FIGI</a></li>
+                <li><button class="btn btn-nav" id="navConnectBtn">Connect Wallet</button></li>
+            </ul>
+            <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Mint Hero -->
+    <section class="mint-hero">
+        <div class="container">
+            <div class="mint-hero-content">
+                <span class="section-tag">RWA NFT Minter</span>
+                <h1>Mint Real World Assets</h1>
+                <p class="mint-hero-desc">Upload a product photo, build on-chain metadata, and mint an NFT backed by a physical asset in the Figital vault.</p>
+            </div>
+            <div class="mint-contracts-bar">
+                <div class="contract-chip">
+                    <span class="chip-label">NFT</span>
+                    <code>0x84Ae...52f9</code>
+                </div>
+                <div class="contract-chip">
+                    <span class="chip-label">Minter</span>
+                    <code>0x83A1...2554</code>
+                </div>
+                <div class="contract-chip">
+                    <span class="chip-label">FIGI</span>
+                    <code>0x72d2...dC4</code>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Mint Flow -->
+    <section class="section mint-section">
+        <div class="container">
+            <div class="mint-layout">
+
+                <!-- Left: Form -->
+                <div class="mint-form-panel">
+
+                    <!-- Step 0: Pinata API Key -->
+                    <div class="mint-step" id="stepPinata">
+                        <div class="mint-step-header">
+                            <span class="mint-step-num">0</span>
+                            <h3>Pinata API Key</h3>
+                        </div>
+                        <p class="mint-step-desc">Enter your Pinata JWT to enable IPFS uploads. This is stored in-memory only — never saved or transmitted elsewhere.</p>
+                        <div class="input-group">
+                            <input type="password" id="pinataJwt" class="form-input" placeholder="eyJhbGciOiJIUzI1NiIs...">
+                            <button class="btn-copy" id="toggleJwtVisibility">Show</button>
+                        </div>
+                        <button class="btn btn-outline btn-full" id="verifyPinata">Verify Connection</button>
+                        <div class="pinata-status" id="pinataStatus"></div>
+                    </div>
+
+                    <!-- Step 1: Upload Image -->
+                    <div class="mint-step" id="stepUpload">
+                        <div class="mint-step-header">
+                            <span class="mint-step-num">1</span>
+                            <h3>Upload Asset Image</h3>
+                        </div>
+                        <p class="mint-step-desc">Upload a photo of the physical asset. This will be pinned to IPFS via Pinata.</p>
+                        <div class="upload-zone" id="uploadZone">
+                            <input type="file" id="imageInput" accept="image/*" hidden>
+                            <div class="upload-prompt" id="uploadPrompt">
+                                <span class="upload-icon">&#8686;</span>
+                                <span>Click or drag to upload</span>
+                                <span class="upload-hint">JPG, PNG, WEBP — Max 25MB</span>
+                            </div>
+                            <div class="upload-preview" id="uploadPreview" style="display:none;">
+                                <img id="previewImage" alt="Preview">
+                                <button class="upload-remove" id="removeImage">&times;</button>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-full" id="pinImage" disabled>Pin Image to IPFS</button>
+                        <div class="ipfs-result" id="imageCidResult" style="display:none;">
+                            <span class="ipfs-label">Image CID</span>
+                            <code id="imageCid"></code>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Asset Metadata -->
+                    <div class="mint-step" id="stepMetadata">
+                        <div class="mint-step-header">
+                            <span class="mint-step-num">2</span>
+                            <h3>Asset Metadata</h3>
+                        </div>
+                        <p class="mint-step-desc">Describe the physical asset. This metadata is stored permanently on IPFS.</p>
+
+                        <label class="form-label">Asset Name *</label>
+                        <div class="input-group">
+                            <input type="text" id="metaName" class="form-input" placeholder="Lab Diamond Tennis Necklace">
+                        </div>
+
+                        <label class="form-label">Description *</label>
+                        <textarea id="metaDescription" class="form-textarea" placeholder="Premium lab-grown diamond tennis necklace, authenticated and secured in the Figital vault." rows="3"></textarea>
+
+                        <label class="form-label">Category *</label>
+                        <select id="metaCategory" class="form-select">
+                            <option value="">Select category...</option>
+                            <option value="Jewelry">Jewelry</option>
+                            <option value="Precious Metal">Precious Metal</option>
+                            <option value="Timepiece">Timepiece</option>
+                            <option value="Collectible">Collectible</option>
+                            <option value="Other">Other</option>
+                        </select>
+
+                        <div class="meta-row">
+                            <div class="meta-col">
+                                <label class="form-label">Brand / Origin</label>
+                                <div class="input-group">
+                                    <input type="text" id="metaBrand" class="form-input" placeholder="Moses NYC">
+                                </div>
+                            </div>
+                            <div class="meta-col">
+                                <label class="form-label">Weight</label>
+                                <div class="input-group">
+                                    <input type="text" id="metaWeight" class="form-input" placeholder="1 Troy Oz">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="meta-row">
+                            <div class="meta-col">
+                                <label class="form-label">Material</label>
+                                <div class="input-group">
+                                    <input type="text" id="metaMaterial" class="form-input" placeholder="Lab Diamond, 14K Gold">
+                                </div>
+                            </div>
+                            <div class="meta-col">
+                                <label class="form-label">Purity / Grade</label>
+                                <div class="input-group">
+                                    <input type="text" id="metaPurity" class="form-input" placeholder=".999 Fine">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="meta-row">
+                            <div class="meta-col">
+                                <label class="form-label">Condition</label>
+                                <select id="metaCondition" class="form-select">
+                                    <option value="">Select...</option>
+                                    <option value="New">New</option>
+                                    <option value="Like New">Like New</option>
+                                    <option value="Excellent">Excellent</option>
+                                    <option value="Good">Good</option>
+                                </select>
+                            </div>
+                            <div class="meta-col">
+                                <label class="form-label">Appraised Value (USD)</label>
+                                <div class="input-group">
+                                    <input type="text" id="metaValue" class="form-input" placeholder="2500.00">
+                                </div>
+                            </div>
+                        </div>
+
+                        <label class="form-label">Vault Location</label>
+                        <div class="input-group">
+                            <input type="text" id="metaVault" class="form-input" placeholder="Figital Primary Vault" value="Figital Primary Vault">
+                        </div>
+
+                        <button class="btn btn-primary btn-full" id="pinMetadata" disabled>Pin Metadata to IPFS</button>
+                        <div class="ipfs-result" id="metadataCidResult" style="display:none;">
+                            <span class="ipfs-label">Metadata CID</span>
+                            <code id="metadataCid"></code>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Mint NFT -->
+                    <div class="mint-step" id="stepMint">
+                        <div class="mint-step-header">
+                            <span class="mint-step-num">3</span>
+                            <h3>Mint NFT</h3>
+                        </div>
+                        <p class="mint-step-desc">Mint the RWA NFT on Base using your Figital Minter contract. The tokenURI will point to the IPFS metadata.</p>
+
+                        <label class="form-label">Mint To Address</label>
+                        <div class="input-group">
+                            <input type="text" id="mintToAddress" class="form-input" placeholder="0x... (defaults to connected wallet)">
+                        </div>
+
+                        <label class="form-label">Token URI</label>
+                        <div class="input-group">
+                            <input type="text" id="mintTokenUri" class="form-input" placeholder="ipfs://..." readonly>
+                        </div>
+
+                        <div class="mint-summary">
+                            <div class="pool-detail-row">
+                                <span>NFT Contract</span>
+                                <code>0x84Ae...52f9</code>
+                            </div>
+                            <div class="pool-detail-row">
+                                <span>Minter Contract</span>
+                                <code>0x83A1...2554</code>
+                            </div>
+                            <div class="pool-detail-row">
+                                <span>Network</span>
+                                <span>Base Mainnet</span>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary btn-full btn-lg" id="confirmMint" disabled>Mint RWA NFT</button>
+                        <div class="mint-result" id="mintResult" style="display:none;">
+                            <div class="mint-success">
+                                <span class="mint-success-icon">&#10003;</span>
+                                <h4>NFT Minted Successfully!</h4>
+                                <div class="pool-detail-row">
+                                    <span>Token ID</span>
+                                    <span id="mintedTokenId">—</span>
+                                </div>
+                                <div class="pool-detail-row">
+                                    <span>Transaction</span>
+                                    <a id="mintTxLink" href="#" target="_blank" rel="noopener">View on BaseScan</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right: Preview -->
+                <div class="mint-preview-panel">
+                    <div class="preview-sticky">
+                        <h3 class="preview-title">NFT Preview</h3>
+                        <div class="nft-preview-card">
+                            <div class="nft-preview-image" id="nftPreviewImage">
+                                <span class="nft-preview-placeholder">Upload an image</span>
+                            </div>
+                            <div class="nft-preview-info">
+                                <span class="nft-preview-collection">Figital RWA Collection</span>
+                                <h4 id="nftPreviewName">Asset Name</h4>
+                                <p id="nftPreviewDesc" class="nft-preview-desc">Asset description will appear here.</p>
+                                <div class="nft-preview-attrs" id="nftPreviewAttrs">
+                                    <!-- Filled dynamically -->
+                                </div>
+                            </div>
+                        </div>
+                        <div class="preview-json-toggle">
+                            <button class="pool-details-btn" id="toggleJsonPreview">View Raw JSON <span class="toggle-arrow">&#9662;</span></button>
+                        </div>
+                        <div class="preview-json" id="jsonPreview">
+                            <pre id="jsonPreviewContent">{}</pre>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Wallet Connect Modal -->
+    <div class="modal-overlay" id="walletModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Connect Wallet</h3>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <p class="modal-desc">Connect your wallet to mint RWA NFTs on the Base network.</p>
+            <div class="wallet-options">
+                <button class="wallet-option" data-wallet="metamask">
+                    <svg class="wallet-icon" viewBox="0 0 40 40" fill="none"><path d="M36.8 3L22.4 13.6l2.7-6.4L36.8 3z" fill="#E2761B" stroke="#E2761B" stroke-width=".3"/><path d="M3.2 3l14.3 10.7-2.6-6.5L3.2 3zM31.5 27.4l-3.8 5.9 8.2 2.3 2.3-8.1-6.7-.1zM1.9 27.5l2.3 8.1 8.2-2.3-3.8-5.9-6.7.1z" fill="#E4761B" stroke="#E4761B" stroke-width=".3"/><path d="M12 17.8l-2.3 3.4 8.1.4-.3-8.7L12 17.8zM28 17.8l-5.6-5-.2 8.8 8.1-.4L28 17.8zM12.4 33.3l4.9-2.4-4.2-3.3-.7 5.7zM22.7 30.9l4.9 2.4-.7-5.7-4.2 3.3z" fill="#E4761B" stroke="#E4761B" stroke-width=".3"/></svg>
+                    <div class="wallet-detail"><span class="wallet-name">MetaMask</span><span class="wallet-desc">Browser extension & mobile</span></div>
+                    <span class="wallet-arrow">&rarr;</span>
+                </button>
+                <button class="wallet-option" data-wallet="coinbase">
+                    <svg class="wallet-icon" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="8" fill="#0052FF"/><path d="M20 8a12 12 0 100 24 12 12 0 000-24zm-3 15a1 1 0 01-1-1v-4a1 1 0 011-1h6a1 1 0 011 1v4a1 1 0 01-1 1h-6z" fill="#fff"/></svg>
+                    <div class="wallet-detail"><span class="wallet-name">Coinbase Wallet</span><span class="wallet-desc">Native Base chain support</span></div>
+                    <span class="wallet-arrow">&rarr;</span>
+                </button>
+                <button class="wallet-option" data-wallet="walletconnect">
+                    <svg class="wallet-icon" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="8" fill="#3B99FC"/><path d="M12.3 16.2c4.3-4.2 11.1-4.2 15.4 0l.5.5a.5.5 0 010 .8l-1.8 1.7a.3.3 0 01-.4 0l-.7-.7a8 8 0 00-10.8 0l-.8.7a.3.3 0 01-.4 0l-1.8-1.7a.5.5 0 010-.8l.8-.5zm19 3.5l1.6 1.5a.5.5 0 010 .8l-7.1 7a.5.5 0 01-.8 0l-5-5a.1.1 0 00-.2 0l-5 5a.5.5 0 01-.8 0l-7.1-7a.5.5 0 010-.8l1.6-1.5a.5.5 0 01.7 0l5.1 5a.1.1 0 00.2 0l5-5a.5.5 0 01.8 0l5 5a.1.1 0 00.2 0l5.1-5a.5.5 0 01.7 0z" fill="#fff"/></svg>
+                    <div class="wallet-detail"><span class="wallet-name">WalletConnect</span><span class="wallet-desc">Scan QR with any wallet</span></div>
+                    <span class="wallet-arrow">&rarr;</span>
+                </button>
+                <button class="wallet-option" data-wallet="rainbow">
+                    <svg class="wallet-icon" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="8" fill="#001E59"/><path d="M8 26.7c0-8.3 6.7-15 15-15a15 15 0 013.3.4 12.2 12.2 0 00-15.5 11.8c0 1.4.2 2.7.7 4H8.1v-1.2z" fill="#FF4000"/><path d="M12 28a11.5 11.5 0 0116.6-10.3A9.3 9.3 0 0016 26.4c0 .5 0 1.1.1 1.6H12z" fill="#FF8D00"/><path d="M16.5 28A7.5 7.5 0 0127 19c.7 0 1.4.1 2 .3a6.3 6.3 0 00-8.7 5.8c0 1 .3 2 .7 2.9h-4.5z" fill="#FFCF00"/><path d="M21 28a3.8 3.8 0 017.2-1.6H32v1.6H21z" fill="#00E599"/><circle cx="28.2" cy="26.3" r="3.8" fill="#00B8FF"/></svg>
+                    <div class="wallet-detail"><span class="wallet-name">Rainbow</span><span class="wallet-desc">Mobile & extension wallet</span></div>
+                    <span class="wallet-arrow">&rarr;</span>
+                </button>
+            </div>
+            <div class="modal-network">
+                <svg viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="8" fill="#0052FF"/><path d="M8 3a5 5 0 100 10A5 5 0 008 3z" fill="#fff"/></svg>
+                <span>Base Network</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <span class="logo">FIGITAL</span>
+                    <p>Bringing physical assets to the blockchain. Vault-held. Verified. Tradeable.</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Platform</h4>
+                    <a href="index.html#vault">The Vault</a>
+                    <a href="pools.html">Liquidity Pools</a>
+                    <a href="mint.html">Mint RWA</a>
+                    <a href="index.html#token">$FIGI Token</a>
+                </div>
+                <div class="footer-links">
+                    <h4>Contracts</h4>
+                    <a href="https://basescan.org/address/0x72d2B2e37134BFa2a36C1014A2264722d9A70dC4" target="_blank" rel="noopener">FIGI Token</a>
+                    <a href="https://basescan.org/address/0x84Aedaecd801d71B8De522308307a9f4586352f9" target="_blank" rel="noopener">Figital NFT</a>
+                    <a href="https://basescan.org/address/0x83A19B3c431781A5352E9EDDF811Fb45a39a2554" target="_blank" rel="noopener">Figital Minter</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Figital. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <script src="mint.js"></script>
+</body>
+</html>
