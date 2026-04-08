@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Figital — Liquidity Pools</title>
+    <meta name="description" content="Provide liquidity to FIGI trading pairs on Base. Earn fees from FIGI/ETH, FIGI/USDC, and FIGI/BTC pools.">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="pools.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar scrolled" id="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">FIGITAL</a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="index.html#vault">The Vault</a></li>
+                <li><a href="pools.html" class="nav-active">Pools</a></li>
+                <li><a href="index.html#token">$FIGI</a></li>
+                <li><button class="btn btn-nav" id="navConnectBtn">Connect Wallet</button></li>
+            </ul>
+            <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Pools Header -->
+    <section class="pools-hero">
+        <div class="container">
+            <div class="pools-hero-content">
+                <span class="section-tag">Liquidity Pools</span>
+                <h1>Earn Fees. Power $FIGI Trading.</h1>
+                <p class="pools-hero-desc">Provide liquidity to FIGI trading pairs on the Base network. Earn a share of trading fees every time someone swaps.</p>
+            </div>
+            <div class="pools-stats-bar">
+                <div class="pool-stat-card">
+                    <span class="pool-stat-label">Total Value Locked</span>
+                    <span class="pool-stat-value" id="tvlTotal">—</span>
+                </div>
+                <div class="pool-stat-card">
+                    <span class="pool-stat-label">Active Pools</span>
+                    <span class="pool-stat-value">3</span>
+                </div>
+                <div class="pool-stat-card">
+                    <span class="pool-stat-label">Network</span>
+                    <span class="pool-stat-value pool-stat-network">
+                        <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="8" fill="#0052FF"/><path d="M8 3a5 5 0 100 10A5 5 0 008 3z" fill="#fff"/></svg>
+                        Base
+                    </span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pool Cards -->
+    <section class="section pools-section">
+        <div class="container">
+
+            <!-- FIGI/ETH Pool -->
+            <div class="pool-card" id="poolFigiEth" data-pool="figi-eth">
+                <div class="pool-header">
+                    <div class="pool-pair">
+                        <div class="pool-icons">
+                            <span class="pool-icon pool-icon-figi">F</span>
+                            <span class="pool-icon pool-icon-eth">&#9670;</span>
+                        </div>
+                        <div class="pool-pair-info">
+                            <h2>FIGI / ETH</h2>
+                            <span class="pool-fee-tier">0.3% fee tier</span>
+                        </div>
+                    </div>
+                    <div class="pool-badges">
+                        <span class="pool-badge pool-badge-active">Active</span>
+                        <span class="pool-badge pool-badge-base">Base</span>
+                    </div>
+                </div>
+
+                <div class="pool-metrics">
+                    <div class="pool-metric">
+                        <span class="pool-metric-label">TVL</span>
+                        <span class="pool-metric-value" id="tvlFigiEth">—</span>
+                    </div>
+                    <div class="pool-metric">
+                        <span class="pool-metric-label">24h Volume</span>
+                        <span class="pool-metric-value" id="volFigiEth">—</span>
+                    </div>
+                    <div class="pool-metric">
+                        <span class="pool-metric-label">APR (est.)</span>
+                        <span class="pool-metric-value pool-metric-apr" id="aprFigiEth">—</span>
+                    </div>
+                    <div class="pool-metric">
+                        <span class="pool-metric-label">Your Position</span>
+                        <span class="pool-metric-value" id="posFigiEth">—</span>
+                    </div>
+                </div>
+
+                <div class="pool-actions">
+                    <button class="btn btn-primary add-liquidity-btn" data-pool="figi-eth">Add Liquidity</button>
+                    <button class="btn btn-outline remove-liquidity-btn" data-pool="figi-eth" disabled>Remove</button>
+                </div>
+
+                <div class="pool-details-toggle">
+                    <button class="pool-details-btn" data-pool="figi-eth">Pool Details <span class="toggle-arrow">&#9662;</span></button>
+                </div>
+                <div class="pool-details" id="detailsFigiEth">
+                    <div class="pool-detail-row">
+                        <span>FIGI Contract</span>
+                        <code>0x72d2...dC4</code>
+                    </div>
+                    <div class="pool-detail-row">
+                        <span>WETH Contract</span>
+                        <code>0x4200...0006</code>
+                    </div>
+                    <div class="pool-detail-row">
+                        <span>Pool Type</span>
+                        <span>Concentrated Liquidity (V3)</span>
+                    </div>
+                    <div class="pool-detail-row">
+                        <span>Fee Tier</span>
+                        <span>0.3%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FIGI/USDC Pool -->
+            <div class="pool-card" id="poolFigiUsdc" data-pool="figi-usdc">
+                <div class="pool-header">
+                    <div class="pool-pair">
+                        <div class="pool-icons">
+                            <span class="pool-icon pool-icon-figi">F</span>
+                            <span class="pool-icon pool-icon-usdc">$</span>
+                        </div>
+                        <div class="pool-pair-info">
+                            <h2>FIGI / USDC</h2>
+                            <span class="pool-fee-tier">0.3% fee tier</span>
+                        </div>
+                    </div>
+                    <div class="pool-badges">
+                        <span class="pool-badge pool-badge-active">Active</span>
+                        <span class="pool-badge pool-badge-base">Base</span>
+                    </div>
+                </div>
+
+                <div class="pool-metrics">
+                    <div class="pool-metric">
+                        <span class="pool-metric-label">TVL</span>
+                        <span class="pool-metric-value" id="tvlFigiUsdc">—</span>
+                    </div>
+                    <div class="pool-metric">
+                        <span class="pool-metric-label">24h Volume</span>
+                        <span class="pool-metric-value" id="volFigiUsdc">—</span>
+                    </div>
+                    <div class="pool-metric">
+                        <span class="pool-metric-label">APR (est.)</span>
+                        <span class="pool-metric-value pool-metric-apr" id="aprFigiUsdc">—</span>
+                    </div>
+                    <div class="pool-metric">
+                        <span class="pool-metric-label">Your Position</span>
+                        <span class="pool-metric-value" id="posFigiUsdc">—</span>
+                    </div>
+                </div>
+
+                <div class="pool-actions">
+                    <button class="btn btn-primary add-liquidity-btn" data-pool="figi-usdc">Add Liquidity</button>
+                    <button class="btn btn-outline remove-liquidity-btn" data-pool="figi-usdc" disabled>Remove</button>
+                </div>
+
+                <div class="pool-details-toggle">
+                    <button class="pool-details-btn" data-pool="figi-usdc">Pool Details <span class="toggle-arrow">&#9662;</span></button>
+                </div>
+                <div class="pool-details" id="detailsFigiUsdc">
+                    <div class="pool-detail-row">
+                        <span>FIGI Contract</span>
+                        <code>0x72d2...dC4</code>
+                    </div>
+                    <div class="pool-detail-row">
+                        <span>USDC Contract</span>
+                        <code>0x8335...2913</code>
+                    </div>
+                    <div class="pool-detail-row">
+                        <span>Pool Type</span>
+                        <span>Concentrated Liquidity (V3)</span>
+                    </div>
+                    <div class="pool-detail-row">
+                        <span>Fee Tier</span>
+                        <span>0.3%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FIGI/BTC Pool -->
+            <div class="pool-card" id="poolFigiBtc" data-pool="figi-btc">
+                <div class="pool-header">
+                    <div class="pool-pair">
+                        <div class="pool-icons">
+                            <span class="pool-icon pool-icon-figi">F</span>
+                            <span class="pool-icon pool-icon-btc">&#8383;</span>
+                        </div>
+                        <div class="pool-pair-info">
+                            <h2>FIGI / BTC</h2>
+                            <span class="pool-fee-tier">0.3% fee tier &middot; cbBTC</span>
+                        </div>
+                    </div>
+                    <div class="pool-badges">
+                        <span class="pool-badge pool-badge-active">Active</span>
+                        <span class="pool-badge pool-badge-base">Base</span>
+                    </div>
+                </div>
+
+                <div class="pool-metrics">
+                    <div class="pool-metric">
+                        <span class="pool-metric-label">TVL</span>
+                        <span class="pool-metric-value" id="tvlFigiBtc">—</span>
+                    </div>
+                    <div class="pool-metric">
+                        <span class="pool-metric-label">24h Volume</span>
+                        <span class="pool-metric-value" id="volFigiBtc">—</span>
+                    </div>
+                    <div class="pool-metric">
+                        <span class="pool-metric-label">APR (est.)</span>
+                        <span class="pool-metric-value pool-metric-apr" id="aprFigiBtc">—</span>
+                    </div>
+                    <div class="pool-metric">
+                        <span class="pool-metric-label">Your Position</span>
+                        <span class="pool-metric-value" id="posFigiBtc">—</span>
+                    </div>
+                </div>
+
+                <div class="pool-actions">
+                    <button class="btn btn-primary add-liquidity-btn" data-pool="figi-btc">Add Liquidity</button>
+                    <button class="btn btn-outline remove-liquidity-btn" data-pool="figi-btc" disabled>Remove</button>
+                </div>
+
+                <div class="pool-details-toggle">
+                    <button class="pool-details-btn" data-pool="figi-btc">Pool Details <span class="toggle-arrow">&#9662;</span></button>
+                </div>
+                <div class="pool-details" id="detailsFigiBtc">
+                    <div class="pool-detail-row">
+                        <span>FIGI Contract</span>
+                        <code>0x72d2...dC4</code>
+                    </div>
+                    <div class="pool-detail-row">
+                        <span>cbBTC Contract</span>
+                        <code>0xcbB7...96B5</code>
+                    </div>
+                    <div class="pool-detail-row">
+                        <span>Pool Type</span>
+                        <span>Concentrated Liquidity (V3)</span>
+                    </div>
+                    <div class="pool-detail-row">
+                        <span>Fee Tier</span>
+                        <span>0.3%</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- How Pools Work -->
+    <section class="section section-dark">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">How It Works</span>
+                <h2>Providing Liquidity</h2>
+            </div>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">01</div>
+                    <h3>Connect Wallet</h3>
+                    <p>Connect your wallet on the Base network. You'll need both tokens in the pair to provide liquidity.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">02</div>
+                    <h3>Choose a Pool</h3>
+                    <p>Select FIGI/ETH, FIGI/USDC, or FIGI/BTC. Each pool earns 0.3% on every swap through it.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">03</div>
+                    <h3>Deposit Tokens</h3>
+                    <p>Approve and deposit an equal value of both tokens. Your position is minted as an LP token.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">04</div>
+                    <h3>Earn Fees</h3>
+                    <p>Every trade through your pool earns you a proportional share of the 0.3% fee. Withdraw anytime.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Add Liquidity Modal -->
+    <div class="modal-overlay" id="liquidityModal">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h3 id="liquidityModalTitle">Add Liquidity</h3>
+                <button class="modal-close" id="liquidityModalClose">&times;</button>
+            </div>
+            <div class="liquidity-form">
+                <div class="liquidity-pair-display" id="liquidityPairDisplay">
+                    <!-- Filled dynamically -->
+                </div>
+
+                <div class="liquidity-inputs">
+                    <div class="liquidity-input-group">
+                        <div class="liquidity-input-header">
+                            <label class="form-label" id="tokenALabel">FIGI</label>
+                            <span class="liquidity-balance" id="tokenABalance">Balance: —</span>
+                        </div>
+                        <div class="input-group">
+                            <input type="number" id="tokenAAmount" class="form-input" placeholder="0.0" step="any" min="0">
+                            <span class="input-suffix" id="tokenASuffix">FIGI</span>
+                        </div>
+                    </div>
+
+                    <div class="liquidity-plus">+</div>
+
+                    <div class="liquidity-input-group">
+                        <div class="liquidity-input-header">
+                            <label class="form-label" id="tokenBLabel">ETH</label>
+                            <span class="liquidity-balance" id="tokenBBalance">Balance: —</span>
+                        </div>
+                        <div class="input-group">
+                            <input type="number" id="tokenBAmount" class="form-input" placeholder="0.0" step="any" min="0">
+                            <span class="input-suffix" id="tokenBSuffix">ETH</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="liquidity-summary">
+                    <div class="pool-detail-row">
+                        <span>Pool Share (est.)</span>
+                        <span id="poolShareEst">—</span>
+                    </div>
+                    <div class="pool-detail-row">
+                        <span>Fee Tier</span>
+                        <span>0.3%</span>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary btn-full btn-lg" id="confirmLiquidity">Approve &amp; Add Liquidity</button>
+                <p class="purchase-note">You may need to approve each token separately before depositing.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wallet Connect Modal (shared) -->
+    <div class="modal-overlay" id="walletModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Connect Wallet</h3>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <p class="modal-desc">Connect your wallet to provide liquidity on the Base network.</p>
+            <div class="wallet-options">
+                <button class="wallet-option" data-wallet="metamask">
+                    <svg class="wallet-icon" viewBox="0 0 40 40" fill="none"><path d="M36.8 3L22.4 13.6l2.7-6.4L36.8 3z" fill="#E2761B" stroke="#E2761B" stroke-width=".3"/><path d="M3.2 3l14.3 10.7-2.6-6.5L3.2 3zM31.5 27.4l-3.8 5.9 8.2 2.3 2.3-8.1-6.7-.1zM1.9 27.5l2.3 8.1 8.2-2.3-3.8-5.9-6.7.1z" fill="#E4761B" stroke="#E4761B" stroke-width=".3"/><path d="M12 17.8l-2.3 3.4 8.1.4-.3-8.7L12 17.8zM28 17.8l-5.6-5-.2 8.8 8.1-.4L28 17.8zM12.4 33.3l4.9-2.4-4.2-3.3-.7 5.7zM22.7 30.9l4.9 2.4-.7-5.7-4.2 3.3z" fill="#E4761B" stroke="#E4761B" stroke-width=".3"/></svg>
+                    <div class="wallet-detail"><span class="wallet-name">MetaMask</span><span class="wallet-desc">Browser extension & mobile</span></div>
+                    <span class="wallet-arrow">&rarr;</span>
+                </button>
+                <button class="wallet-option" data-wallet="coinbase">
+                    <svg class="wallet-icon" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="8" fill="#0052FF"/><path d="M20 8a12 12 0 100 24 12 12 0 000-24zm-3 15a1 1 0 01-1-1v-4a1 1 0 011-1h6a1 1 0 011 1v4a1 1 0 01-1 1h-6z" fill="#fff"/></svg>
+                    <div class="wallet-detail"><span class="wallet-name">Coinbase Wallet</span><span class="wallet-desc">Native Base chain support</span></div>
+                    <span class="wallet-arrow">&rarr;</span>
+                </button>
+                <button class="wallet-option" data-wallet="walletconnect">
+                    <svg class="wallet-icon" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="8" fill="#3B99FC"/><path d="M12.3 16.2c4.3-4.2 11.1-4.2 15.4 0l.5.5a.5.5 0 010 .8l-1.8 1.7a.3.3 0 01-.4 0l-.7-.7a8 8 0 00-10.8 0l-.8.7a.3.3 0 01-.4 0l-1.8-1.7a.5.5 0 010-.8l.8-.5zm19 3.5l1.6 1.5a.5.5 0 010 .8l-7.1 7a.5.5 0 01-.8 0l-5-5a.1.1 0 00-.2 0l-5 5a.5.5 0 01-.8 0l-7.1-7a.5.5 0 010-.8l1.6-1.5a.5.5 0 01.7 0l5.1 5a.1.1 0 00.2 0l5-5a.5.5 0 01.8 0l5 5a.1.1 0 00.2 0l5.1-5a.5.5 0 01.7 0z" fill="#fff"/></svg>
+                    <div class="wallet-detail"><span class="wallet-name">WalletConnect</span><span class="wallet-desc">Scan QR with any wallet</span></div>
+                    <span class="wallet-arrow">&rarr;</span>
+                </button>
+                <button class="wallet-option" data-wallet="rainbow">
+                    <svg class="wallet-icon" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="8" fill="#001E59"/><path d="M8 26.7c0-8.3 6.7-15 15-15a15 15 0 013.3.4 12.2 12.2 0 00-15.5 11.8c0 1.4.2 2.7.7 4H8.1v-1.2z" fill="#FF4000"/><path d="M12 28a11.5 11.5 0 0116.6-10.3A9.3 9.3 0 0016 26.4c0 .5 0 1.1.1 1.6H12z" fill="#FF8D00"/><path d="M16.5 28A7.5 7.5 0 0127 19c.7 0 1.4.1 2 .3a6.3 6.3 0 00-8.7 5.8c0 1 .3 2 .7 2.9h-4.5z" fill="#FFCF00"/><path d="M21 28a3.8 3.8 0 017.2-1.6H32v1.6H21z" fill="#00E599"/><circle cx="28.2" cy="26.3" r="3.8" fill="#00B8FF"/></svg>
+                    <div class="wallet-detail"><span class="wallet-name">Rainbow</span><span class="wallet-desc">Mobile & extension wallet</span></div>
+                    <span class="wallet-arrow">&rarr;</span>
+                </button>
+            </div>
+            <div class="modal-network">
+                <svg viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="8" fill="#0052FF"/><path d="M8 3a5 5 0 100 10A5 5 0 008 3z" fill="#fff"/></svg>
+                <span>Base Network</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <span class="logo">FIGITAL</span>
+                    <p>Bringing physical assets to the blockchain. Vault-held. Verified. Tradeable.</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Platform</h4>
+                    <a href="index.html#vault">The Vault</a>
+                    <a href="pools.html">Liquidity Pools</a>
+                    <a href="index.html#token">$FIGI Token</a>
+                </div>
+                <div class="footer-links">
+                    <h4>Company</h4>
+                    <a href="index.html#about">About</a>
+                    <a href="#">Terms of Service</a>
+                    <a href="#">Privacy Policy</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Figital. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <script src="pools.js"></script>
+</body>
+</html>

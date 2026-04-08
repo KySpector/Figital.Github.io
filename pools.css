@@ -1,0 +1,437 @@
+/* ===== FIGITAL — Pools Page Styles ===== */
+
+/* Pools Hero */
+.pools-hero {
+    padding: 140px 0 60px;
+    background: var(--color-bg);
+    position: relative;
+    overflow: hidden;
+}
+
+.pools-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, var(--color-primary-glow) 0%, transparent 60%);
+}
+
+.pools-hero-content {
+    position: relative;
+    text-align: center;
+    max-width: 700px;
+    margin: 0 auto 48px;
+}
+
+.pools-hero h1 {
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 16px;
+}
+
+.pools-hero-desc {
+    font-size: 1.1rem;
+    color: var(--color-text-muted);
+    line-height: 1.7;
+}
+
+/* Stats Bar */
+.pools-stats-bar {
+    position: relative;
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+.pool-stat-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 20px 32px;
+    text-align: center;
+    min-width: 180px;
+}
+
+.pool-stat-label {
+    display: block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-text-muted);
+    margin-bottom: 6px;
+}
+
+.pool-stat-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+.pool-stat-network {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Pools Section */
+.pools-section {
+    padding-top: 60px;
+}
+
+/* Pool Cards */
+.pool-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    margin-bottom: 24px;
+    transition: var(--transition);
+}
+
+.pool-card:hover {
+    border-color: var(--color-primary);
+}
+
+.pool-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+}
+
+.pool-pair {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.pool-icons {
+    display: flex;
+    align-items: center;
+}
+
+.pool-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1rem;
+    border: 2px solid var(--color-bg);
+}
+
+.pool-icon:nth-child(2) {
+    margin-left: -12px;
+}
+
+.pool-icon-figi {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+    color: #fff;
+    z-index: 1;
+}
+
+.pool-icon-eth {
+    background: #627EEA;
+    color: #fff;
+}
+
+.pool-icon-usdc {
+    background: #2775CA;
+    color: #fff;
+}
+
+.pool-icon-btc {
+    background: #F7931A;
+    color: #fff;
+}
+
+.pool-pair-info h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.pool-fee-tier {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.pool-badges {
+    display: flex;
+    gap: 8px;
+}
+
+.pool-badge {
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pool-badge-active {
+    background: rgba(0, 210, 160, 0.12);
+    color: var(--color-green);
+    border: 1px solid rgba(0, 210, 160, 0.25);
+}
+
+.pool-badge-pending {
+    background: rgba(240, 192, 64, 0.12);
+    color: var(--color-gold);
+    border: 1px solid rgba(240, 192, 64, 0.25);
+}
+
+.pool-badge-base {
+    background: rgba(0, 82, 255, 0.12);
+    color: #4D8AFF;
+    border: 1px solid rgba(0, 82, 255, 0.25);
+}
+
+/* Pool Metrics */
+.pool-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.pool-metric {
+    padding: 16px;
+    background: var(--color-bg);
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+}
+
+.pool-metric-label {
+    display: block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-text-muted);
+    margin-bottom: 4px;
+}
+
+.pool-metric-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.pool-metric-apr {
+    color: var(--color-green);
+}
+
+/* Pool Actions */
+.pool-actions {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.pool-actions .btn {
+    flex: 1;
+}
+
+/* Pool Details Toggle */
+.pool-details-toggle {
+    text-align: center;
+}
+
+.pool-details-btn {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    font-family: var(--font);
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 8px 16px;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pool-details-btn:hover {
+    color: var(--color-text);
+}
+
+.toggle-arrow {
+    transition: transform 0.3s ease;
+    display: inline-block;
+}
+
+.toggle-arrow.rotated {
+    transform: rotate(180deg);
+}
+
+.pool-details {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    border-top: 1px solid transparent;
+}
+
+.pool-details.open {
+    max-height: 300px;
+    padding-top: 16px;
+    margin-top: 12px;
+    border-top-color: var(--color-border);
+}
+
+.pool-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    font-size: 0.9rem;
+}
+
+.pool-detail-row span:first-child {
+    color: var(--color-text-muted);
+}
+
+.pool-detail-row code {
+    font-family: 'Courier New', monospace;
+    color: var(--color-accent);
+    font-size: 0.85rem;
+}
+
+/* Liquidity Modal Additions */
+.modal-lg {
+    max-width: 520px;
+}
+
+.liquidity-pair-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--color-bg);
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+    margin-bottom: 24px;
+}
+
+.liq-pair-icons {
+    display: flex;
+    align-items: center;
+}
+
+.liq-pair-icons .pool-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 0.85rem;
+}
+
+.liq-pair-icons .pool-icon:nth-child(2) {
+    margin-left: -8px;
+}
+
+.liq-pair-name {
+    font-weight: 700;
+    font-size: 1rem;
+    flex: 1;
+}
+
+.liq-pair-fee {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    background: rgba(108, 92, 231, 0.1);
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+
+.liquidity-inputs {
+    margin-bottom: 20px;
+}
+
+.liquidity-input-group {
+    margin-bottom: 8px;
+}
+
+.liquidity-input-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.liquidity-balance {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.liquidity-plus {
+    text-align: center;
+    padding: 8px 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--color-text-muted);
+}
+
+.liquidity-summary {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+}
+
+.liquidity-summary .pool-detail-row {
+    padding: 6px 0;
+}
+
+/* Nav active state */
+.nav-active {
+    color: var(--color-text) !important;
+    position: relative;
+}
+
+.nav-active::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--color-primary);
+    border-radius: 1px;
+}
+
+/* Responsive */
+@media (max-width: 968px) {
+    .pools-stats-bar {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .pool-stat-card {
+        width: 100%;
+        max-width: 360px;
+    }
+
+    .pool-metrics {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .pool-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    .pool-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .pool-actions {
+        flex-direction: column;
+    }
+
+    .pool-pair-info h2 {
+        font-size: 1.1rem;
+    }
+}
